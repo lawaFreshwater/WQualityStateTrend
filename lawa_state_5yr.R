@@ -55,8 +55,7 @@ EndYear <- 2016
 
 #/* -===Include required function libraries===- */ 
 
-
-source("lawa_state_functions.R")
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 #/* -===Global variable/constant definitions===- */ 
 vendor <- c("52NORTH","AQUATIC","HILLTOP","KISTERS")
@@ -253,14 +252,7 @@ for(i in 1:length(wqparam)){
                      "Region","Agency","ISLAND","CatchID","CatchType",
                      "NZREACH","Catchment","Comments","LawaCatchm","CatchLbl")
 
-  # newFieldNames <- c("SiteName","Date","Value","Method","parameter",
-  #                    "Censored","CenType","ROS","iValues",
-  #                    "OriginalValues","X","LAWAID","ID",
-  #                    "UsedInLAWA","AltitudeGroup","LanduseGroup","FrequencyAll","Frequency",
-  #                    "Region","Agency","ISLAND","CatchID","CatchType",
-  #                    "NZREACH","Catchment","Comments","LawaCatchm","CatchLbl")
-  # 
-  # 
+
   names(wqdata) <- newFieldNames
   
   ### ADD IN THE LAWA SITE TABLE ATTRIBUTES

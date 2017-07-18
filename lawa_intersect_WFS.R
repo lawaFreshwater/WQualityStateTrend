@@ -15,13 +15,13 @@ rm(list = ls())
 ANALYSIS<-"Intersect WFS"
 # Set working directory
 
-od <- getwd()
-wd <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\R\\lawa_state"
+od     <- getwd()
+wd     <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\R\\lawa_state"
 setwd(wd)
 
 #/* -===Include required function libraries===- */ 
 
-source("lawa_state_functions.R")
+source("scripts\\WQualityStateTrend\\lawa_state_functions.R")
 
 require(rgeos)
 require(spatialEco)

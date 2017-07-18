@@ -16,7 +16,8 @@ od<-getwd()
 setwd("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state")
 
 #/* -===Include required function libraries===- */ 
-source("lawa_state_functions.R")
+
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 wqparam <- c("BDISC","TURB","PH","NH4","TON","TN","DRP","TP","ECOLI") 
 wqparam <- as.data.frame(as.matrix(wqparam))

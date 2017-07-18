@@ -39,7 +39,7 @@ EndYear <- 2016
 
 #/* -===Include required function libraries===- */ 
 
-source("lawa_state_functions.R")
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 #/* -===Global variable/constant definitions===- */ 
 vendor <- c("52NORTH","AQUATIC","HILLTOP","KISTERS")
