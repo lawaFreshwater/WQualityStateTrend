@@ -4,7 +4,7 @@ ANALYSIS<-"Main routine"
 od<-getwd()
 rm(list = ls())
 setwd("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state")
-source("lawa_state_functions.R")
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 
 message("LAWA State and Trend analysis started")

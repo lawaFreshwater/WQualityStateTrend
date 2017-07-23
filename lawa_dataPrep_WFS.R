@@ -24,7 +24,7 @@ logfolder <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\ROutput\\"
 #/* -===Include required function libraries===- */ 
 
 
-source("lawa_state_functions.R")
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 ## Supplementary functions
 

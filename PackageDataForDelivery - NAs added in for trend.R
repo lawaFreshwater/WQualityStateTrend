@@ -1,5 +1,14 @@
 #requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+ANALYSIS<-"DELIVERY"
+# Set working directory
+od<-getwd()
+setwd("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state")
 
+#/* -===Include required function libraries===- */ 
+
+source("scripts/WQualityStateTrend/lawa_state_functions.R")
+
+wqparam <- c("BDISC","TURB","PH","NH4","TON","TN","DRP","TP","ECOLI") 
 # build template file of all possible results for Trend - Sites x Parameter x Five/Ten Yr
 
 # specify a matrix of appropriate size
@@ -7,7 +16,7 @@
 # building blank data file
 if(!exists("templateSeason")){
   library(readr)
-  seasons <- read_csv("//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/seasons.csv")
+  seasons <- read_csv("//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/seasons.csv")
   
   
   for(j in 1:nrow(l)){
@@ -35,7 +44,7 @@ if(!exists("templateSeason")){
 
 #build blank trend results file
 
-trend_fordelivery <- read.csv("//file/herman/R/OA/08/02/2016/Water Quality/ROutput/trend_fordelivery.csv")
+trend_fordelivery <- read.csv("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_fordelivery.csv")
 trend_fordelivery <- trend_fordelivery[,c(2:length(trend_fordelivery))]
 
 #/* -===Local variable/constant definitions===- */
@@ -44,6 +53,8 @@ l$SWQLanduse[l$SWQLanduse=="Native"|l$SWQLanduse=="Exotic"|l$SWQLanduse=="Natura
 
 wqparam  <- c("BDISC","TURB","NH4","TON","TN","DRP","TP","ECOLI") 
 
+landuse  <- unique(l$SWQLanduse)
+altitude <- unique(l$SWQAltitude)
 
 blank.trend.rows <- nrow(l)*length(wqparam)*2
 data.blank <- matrix(data=NA, nrow=blank.trend.rows, ncol=length(trend_fordelivery), byrow=TRUE)
@@ -51,14 +62,14 @@ data.blank <- matrix(data=NA, nrow=blank.trend.rows, ncol=length(trend_fordelive
 counter<-1
 for(i in 1:nrow(l)){
   for(j in 1:length(wqparam)){
-    for(k in 1:length(landuse)){
-      for(m in 1:length(altitude)){
+    #for(k in 1:length(landuse)){
+      #for(m in 1:length(altitude)){
       data.blank[counter,] <- c(l$LawaSiteID[i],wqparam[j],l$SWQLanduse[i],l$SWQAltitude[i],NA,l$SWQFrequencyLast5[i],l$Region[i],5)
       counter<-counter+1
       data.blank[counter,] <- c(l$LawaSiteID[i],wqparam[j],l$SWQLanduse[i],l$SWQAltitude[i],NA,l$SWQFrequencyAll[i],l$Region[i],10)
       counter<-counter+1
-      }
-    }
+      #}
+    #}
   }
 }
 
@@ -75,4 +86,4 @@ names(tmp) <- c("Location","Parameter","Altitude","Landuse","TrendScore","Freque
 tmp$TrendScore <- as.character(tmp$TrendScore)
 tmp$TrendScore[is.na(tmp$TrendScore)] <- "NA"
 
-trend_fordelivery <- write.csv(tmp, "//file/herman/R/OA/08/02/2016/Water Quality/ROutput/trend_fordelivery_with_NA.csv")
+trend_fordelivery <- write.csv(tmp, "//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_fordelivery_with_NA.csv")

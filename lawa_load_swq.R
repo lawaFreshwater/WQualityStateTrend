@@ -5,8 +5,13 @@
 message("Load Surface Water Quality data from Councils")
 message("-- A folder for todays date will be created and the imported files will be stashed there.")
 
-shell(paste('mkdir "R:/2017/Water Quality/1.Imported/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE)
-shell(paste('mkdir "R:/2017/Water Quality/4.Analysis/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE)
+# Encapsulating mkdir commands in the try() in order to suppress error messages on failure
+# Failure's can mean
+#               1. Directories already exist
+#               1. R:/ drive not mapped to \\file\herman\R\OA\08\02
+
+try(shell(paste('mkdir "R:/2017/Water Quality/1.Imported/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = TRUE)
+try(shell(paste('mkdir "R:/2017/Water Quality/4.Analysis/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = TRUE)
 
 
 ## ----------------------------------------------------------------------------,
@@ -41,7 +46,7 @@ source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadTRC.R")
 rm("Data","df","df2","df2","sample","udf")
 
 #Hawkes Bay
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadHBRC.R")
+source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadHBRC_v2.R")
 rm("Data","df","df2","df2","sample","udf")
 
 #Horizons
