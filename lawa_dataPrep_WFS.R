@@ -367,6 +367,12 @@ for(a in 1:length(agencies)){
 
 #siteTable$Long[siteTable$LawaSiteID=="NRWQN-00022"] <-siteTable$Long[siteTable$LawaSiteID=="NRWQN-00022"][2]
 
+# For WCRC-00031 - location is wrong in WFS
+# NZTM coordinates from WCRC website: 1466541,5295450
+# WGS84, now:   Latitude	Longitude  	-42.48179737	171.37623113
+
+siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
+siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
 
 ## Output for next script
 write.csv(x = siteTable,file = "LAWA_Site_Table.csv")
