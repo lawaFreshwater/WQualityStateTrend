@@ -38,6 +38,7 @@ ld <- function(url,dataLocation,case.fix=TRUE){
     unlink("tmp1")
   } else if(dataLocation=="file"){
     cc(url)
+    message("trying file",url,"\nContent type  'text/xml'\n")
     if(grepl("xml$",url)){
       xmlfile <- xmlParse(url)
     } else {
@@ -91,8 +92,8 @@ cc <- function(file){
 ## Load csv with WFS addresses
 urls2017      <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/CouncilWFS.csv"
 urls          <- read.csv(urls2017,stringsAsFactors=FALSE)
-urls2016      <- "//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/CouncilWFS.csv"
-urls          <- read.csv(urls2016,stringsAsFactors=FALSE)
+#urls2016      <- "//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/CouncilWFS.csv"
+#urls          <- read.csv(urls2016,stringsAsFactors=FALSE)
 stopGapNames  <- read.csv("agencyRegion.csv",stringsAsFactors=FALSE)
 
 # Drop BOPRC - GIS Server erroring
@@ -130,7 +131,7 @@ for(h in 1:length(urls$URL)){
   if(!nzchar(urls$URL[h])){  ## returns false if the URL string is missing
     next
   }
-  #if(h==6){
+  #if(h==12){
   #  next()
   #}
 
@@ -249,9 +250,7 @@ for(h in 1:length(urls$URL)){
         cat("Only",length(latlong[1,]),"out of",nrow(a),"sites with lat-longs.\nSome site locations missing\n")
         
         #if(h==11){  # Change back to 11 once BOPRC included again
-        if(h==11){  # Northland - might be case for all other councils too. Verify
-          a <- merge(a,b,by.x="V2",by.y="CouncilSiteID",all.x=TRUE)
-        } else if(h==5){  # Gisborne - Mixed IDs? between CouncilSiteId and SiteID
+        if(h==12){  # Northland - might be case for all other councils too. Verify
           a <- merge(a,b,by.x="V2",by.y="CouncilSiteID",all.x=TRUE)
         } else {        
           a <- merge(a,b,by.x="V1",by.y="CouncilSiteID",all.x=TRUE)
