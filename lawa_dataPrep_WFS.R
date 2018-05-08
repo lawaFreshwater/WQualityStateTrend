@@ -92,6 +92,7 @@ cc <- function(file){
 ## Load csv with WFS addresses
 urls2017      <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/CouncilWFS.csv"
 urls          <- read.csv(urls2017,stringsAsFactors=FALSE)
+urls$Agency[urls$Agency=="TDC"] <- "xTDC"   ## Commenting out Tasman DC due to Hilltop Server issues
 #urls2016      <- "//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/CouncilWFS.csv"
 #urls          <- read.csv(urls2016,stringsAsFactors=FALSE)
 stopGapNames  <- read.csv("agencyRegion.csv",stringsAsFactors=FALSE)

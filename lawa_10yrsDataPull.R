@@ -40,6 +40,14 @@ EndYear <- 2016
 #/* -===Include required function libraries===- */ 
 
 source("scripts/WQualityStateTrend/lawa_state_functions.R")
+HilltopLibrary<-FALSE
+library(Hilltop)
+HilltopLibrary<-TRUE
+#-- Specifying source files - note that these connections are pulling from SOE folder on HilltopDEV
+
+if(HilltopLibrary==TRUE){
+  lawa            <- Hilltop::HilltopData("//hilltopdev/data/lawa2017/state/lawa_provisional_2017.dsn")
+}
 
 #/* -===Global variable/constant definitions===- */ 
 vendor <- c("52NORTH","AQUATIC","HILLTOP","KISTERS")
@@ -71,7 +79,7 @@ hts <- c("service=Hilltop",
 # Site data request
 
 #l <- SiteTable(databasePathFileName="//ares/waterquality/LAWA/2013/hilltop.mdb",sqlID=2) ## Assumes all sites have hilltop.mdb site names
-requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+if(HilltopLibrary!=TRUE) requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
 
 # Replace database call here with call to previously loaded WFS Site data
 #l <- SiteTable(databasePathFileName="//file/herman/R/OA/08/02/2017/MASTER SiteList/lawa_2016.mdb",sqlID=3) ## Allows for different sitenames in hilltop.mdb - requires assessment and population of the database.
@@ -94,18 +102,45 @@ cat("LAWA Water QUality TREND Analysis\n","Number of sites returned:",length(s))
 #requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
 for(i in 1:length(wqparam)){
   
-  # Deprecated 18-Sep-2016 as censored data handled by functions
-  # supplied by Ton Snelder.
-  #tr <- subset(trendRules_csv,DefaultMeasurement==wqparam[i] & Trend=="5years" & Rule=="Halve non detect" & UsedInLAWA==TRUE)
-  requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+  ## Added Hilltop library 2017-09-07
+  if(HilltopLibrary!=TRUE){
+    requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+  }
   cat("Starting",wqparam[i],"\n")
-  r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
-  #r <- requestData(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
-  wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop")
-  wqdata$Value <- as.character(wqdata$Value)
-  wqdata$parameter <- wqparam[i]
   
-  
+  if(HilltopLibrary==TRUE){
+    lawa_collection <- GetCollection.HilltopData(lawa, "//hilltopdev/c$/HilltopServer/LAWA_collections.xml",paste("LAWA",wqparam[i],sep="_"))
+    mySites<-unique(lawa_collection[,1])
+    myMeas<-unique(lawa_collection[,2])
+    for(ii in 1:length(mySites)){
+      dx <- try(GetData(lawa,mySites[ii], myMeas, startTime=paste(StartYear,"-01-01",sep=""), endTime=paste(EndYear + 1,"-01-01",sep=""), WQParams=FALSE),silent=TRUE)
+      if(attr(dx,"class")!="try-error"){
+        if(ii==1){
+          x1 <- unlist(attr(dx,"dimnames"))
+          x1df <- data.frame(index(dx),as.character(coredata(dx)),stringsAsFactors = FALSE)
+          x1df$SiteName<-mySites[ii];x1df$parameter<-wqparam[i];x1df$Method<-""
+          x1df <- x1df[,c(3,1,2,5,4)]
+          names(x1df) <- c("SiteName" , "Date"  ,    "Value"   ,  "Method"  ,  "parameter")
+          wqdata <- x1df
+        } else {
+          x1 <- unlist(attr(dx,"dimnames"))
+          x1df <- data.frame(index(dx),as.character(coredata(dx)),stringsAsFactors = FALSE)
+          x1df$SiteName<-mySites[ii];x1df$parameter<-wqparam[i];x1df$Method<-""
+          x1df <- x1df[,c(3,1,2,5,4)]
+          names(x1df) <- c("SiteName" , "Date"  ,    "Value"   ,  "Method"  ,  "parameter")
+          wqdata <- rbind.data.frame(wqdata,x1df,stringsAsFactors = FALSE)
+        }
+        rm(x1,x1df)
+      }
+    }
+    
+  } else {
+    r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
+    #r <- requestData(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
+    wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop")
+    wqdata$Value <- as.character(wqdata$Value)
+    wqdata$parameter <- wqparam[i]
+  }  
   # ------------------------
   # Handling censored data
   # ------------------------
@@ -141,6 +176,10 @@ wd <- "//file/herman/R/OA/08/02/2017/Water Quality/ROutput"
 setwd(wd)
 
 r <- unique(lawadata$Region)
+
+# disconnect from Hilltop object
+Hilltop::disconnect(lawa)
+
 
 for(i in 1:length(r)){
   write.csv(lawadata[lawadata$Region==r[i],],paste(r[i],".csv",sep=""),row.names = FALSE)

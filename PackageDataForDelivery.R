@@ -33,9 +33,16 @@ trends<-read.csv(file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend
 # ---------------------
 # [2015-10-08] Remove DIN results - not required for LAWA upload - only there for River Awards & Morgan Foundation 
 trends <- trends[trends$Parameter!="DIN",]
+trends <- trends[trends$Parameter!="PH",]
 trends$X <- c(1:nrow(trends)) # updating row counter in data - only needed for debugging code
 
 # ---------------------
+# [2017-09-07] Sort by Location,Parameter, m, period and keep Max values for 5 and 10 year months (var=m)
+trend_1 <- aggregate(x=trends,by=list(trends$Location,trends$Parameter,trends$period),FUN=max)[,c(4:(4+length(trends)-1))]
+
+
+# ---------------------
+# 10 year TRENDS
 # [2015-10-08] Load data to determine frequency's by region, catchment and site and retain those data that match
 StartYear <- 2007
 EndYear <- 2016
@@ -112,12 +119,20 @@ df_minfreq_Catchment <- df_minfreq_Catchment[,c(2,3,4,1,5,6,7)]
 # Converting location column to character
 df_minfreq_Catchment$Location <- as.character(df_minfreq_Catchment$Location)
 
+# # Parameter
+# df_minfreq_Parameter$Frequency<-"Quarterly"
+# df_minfreq_Parameter$Frequency[df_minfreq_Parameter$Value>=10]<-"Monthly"
+# # recode value here to 12 or 4 as well
+# df_minfreq_Parameter$Value[df_minfreq_Parameter$Value>=10]<-12
+# df_minfreq_Parameter$Value[df_minfreq_Parameter$Value<10]<-4
+# 
+
 # Parameter
 df_minfreq_Parameter$Frequency<-"Quarterly"
-df_minfreq_Parameter$Frequency[df_minfreq_Parameter$Value>=10]<-"Monthly"
+df_minfreq_Parameter$Frequency[df_minfreq_Parameter$Value>=12]<-"Monthly"
 # recode value here to 12 or 4 as well
-df_minfreq_Parameter$Value[df_minfreq_Parameter$Value>=10]<-12
-df_minfreq_Parameter$Value[df_minfreq_Parameter$Value<10]<-4
+df_minfreq_Parameter$Value[df_minfreq_Parameter$Value>=12]<-12
+df_minfreq_Parameter$Value[df_minfreq_Parameter$Value<12]<-4
 
 
 df_minfreq_Parameter <- df_minfreq_Parameter[is.na(df_minfreq_Parameter$Region)==FALSE,]
@@ -143,12 +158,12 @@ names(df_minfreq) <- n
 
 
 #issue with join below
-tmp <- merge(trends,df_minfreq,by=c("Location","Parameter"),all.x=TRUE)
+tmp <- merge(trend_1,df_minfreq,by=c("Location","Parameter"),all.x=TRUE)
 
 # [2015-10-14] Joining data to select min frequency matches
 #tmp<-dplyr::left_join(trends,df_minfreq,by=c("Location","Parameter"))
-tmp1<-tmp[tmp$m==tmp$Value,]
-
+#tmp1<-tmp[tmp$m==tmp$Value,]
+tmp1<-tmp[,c(1:6,8:16)]
 
 
 # ---------------------
@@ -164,14 +179,159 @@ tmp1<-tmp1[,c(1,2,7,8,4,10,9,6)]
 names(tmp1) <-c("Location",	"Parameter",	"Altitude",	"Landuse",	"TrendScore",	"Frequency",	"Region",	"period")
 # remove any NA rows
 tmp1 <- tmp1[!is.na(tmp1$Location),]
+tmp1 <- tmp1[tmp1$period==10,]
+
+# ---------------------
+# 5 year TRENDS
+# [2015-10-08] Load data to determine frequency's by region, catchment and site and retain those data that match
+StartYear <- 2012
+EndYear <- 2016
+StartMonth <- 1
+EndMonth <- 12
+load(file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trenddata2012-2016.RData")
+
+lawadata <- samplesByInterval(StartYear,EndYear,StartMonth,EndMonth,lawadata)
+
+# Determine counts by site/parameter/year
+df_minfreq_length <- summaryBy(Value~Region+Catchment+SiteName+parameter+year,data=lawadata,
+                               id=~LAWAID+FrequencyAll,
+                               FUN=c(length), keep.name=TRUE)
+
+# Determine annual medians counts by site/parameter
+df_minfreq_Parameter <- summaryBy(Value~Region+Catchment+SiteName+parameter,data=df_minfreq_length,
+                                  id=~LAWAID,
+                                  FUN=c(median), keep.name=TRUE)
+
+# # Determine annual medians counts by site
+# df_minfreq_Site <- summaryBy(Value~Region+Catchment+SiteName,data=df_minfreq_length,
+#                                id=~LAWAID,
+#                                FUN=c(median), keep.name=TRUE)
+
+# Determine annual medians counts by catchment
+df_minfreq_Catchment <- summaryBy(Value~Region+Catchment+parameter,data=df_minfreq_length,
+                                  FUN=c(median), keep.name=TRUE)
+
+# Determine annual medians counts by region
+df_minfreq_Region <- summaryBy(Value~Region+parameter,data=df_minfreq_length,
+                               FUN=c(median), keep.name=TRUE)
+
+# Determining minimum frequency's
+# Region
+df_minfreq_Region$Frequency<-"Quarterly"
+df_minfreq_Region$Frequency[df_minfreq_Region$Value==12]<-"Monthly"
+# recode value here to 12 or 4 as well
+df_minfreq_Region$Value[df_minfreq_Region$Value!=12]<-4
+
+df_minfreq_Region <- df_minfreq_Region[is.na(df_minfreq_Region$Region)==FALSE,]
+n <- names(df_minfreq_Region)
+n[1]<-"Location"
+names(df_minfreq_Region)<-n
+
+df_minfreq_Region$Region<-df_minfreq_Region$Location
+df_minfreq_Region$Catchment<-""
+df_minfreq_Region$SiteName<-""
+
+# Cross-join regions with parameters to have each parameter for each region
+#df_minfreq_Region <- merge(x = df_minfreq_Region, y = wqparam, by = NULL)
+
+
+# Catchment
+df_minfreq_Catchment$Frequency<-"Quarterly"
+df_minfreq_Catchment$Frequency[df_minfreq_Catchment$Value>=10]<-"Monthly"
+# recode value here to 12 or 4 as well
+df_minfreq_Catchment$Value[df_minfreq_Catchment$Value>=10]<-12
+df_minfreq_Catchment$Value[df_minfreq_Catchment$Value<10]<-4
+
+df_minfreq_Catchment <- df_minfreq_Catchment[is.na(df_minfreq_Catchment$Region)==FALSE,]
+n <- names(df_minfreq_Catchment)
+n[2] <-"Location"
+names(df_minfreq_Catchment)<-n
+
+df_minfreq_Catchment$Catchment<-""
+df_minfreq_Catchment$SiteName<-""
+
+# Cross-join regions with parameters to have each parameter for each region
+#df_minfreq_Catchment <- merge(x = df_minfreq_Catchment, y = wqparam, by = NULL)
+
+# Reordering columns
+df_minfreq_Catchment <- df_minfreq_Catchment[,c(2,3,4,1,5,6,7)]
+
+# Converting location column to character
+df_minfreq_Catchment$Location <- as.character(df_minfreq_Catchment$Location)
+
+# # Parameter
+# df_minfreq_Parameter$Frequency<-"Quarterly"
+# df_minfreq_Parameter$Frequency[df_minfreq_Parameter$Value>=10]<-"Monthly"
+# # recode value here to 12 or 4 as well
+# df_minfreq_Parameter$Value[df_minfreq_Parameter$Value>=10]<-12
+# df_minfreq_Parameter$Value[df_minfreq_Parameter$Value<10]<-4
+
+# Parameter - this section updated 2017-09-04 to be more restrictive - changing criteria from 10 to 12.
+# Justification: Site/parameter combos need 60 samples over 5 years - setting value to 10 results in
+# having too many sites excluded as they do not meeting this criteria when 10 or 11 samples per year.
+df_minfreq_Parameter$Frequency<-"Quarterly"
+df_minfreq_Parameter$Frequency[df_minfreq_Parameter$Value>=12]<-"Monthly"
+# recode value here to 12 or 4 as well
+df_minfreq_Parameter$Value[df_minfreq_Parameter$Value>=12]<-12
+df_minfreq_Parameter$Value[df_minfreq_Parameter$Value<12]<-4
+
+
+
+df_minfreq_Parameter <- df_minfreq_Parameter[is.na(df_minfreq_Parameter$Region)==FALSE,]
+n <- names(df_minfreq_Parameter)
+n[4]<-"parameter"
+n[6]<-"Location"
+names(df_minfreq_Parameter) <- n
+
+# [2015-10-14] Reordering columns
+df_minfreq_Parameter <- df_minfreq_Parameter[,c(6,5,7,1:4)]
+
+
+df_minfreq_Parameter <- df_minfreq_Parameter[,c(1,7,2,3:6)]
+df_minfreq_Catchment <- df_minfreq_Catchment[,c(1:3,5,4,6:7)]
+
+
+# [2015-10-14] Binding tables together in order to join results to TRENDS table
+df_minfreq <- rbind.data.frame(df_minfreq_Region,df_minfreq_Catchment,df_minfreq_Parameter)
+
+n <- names(df_minfreq)
+n[2]<-"Parameter"
+names(df_minfreq) <- n
+
+
+#issue with join below
+tmp <- merge(trend_1,df_minfreq,by=c("Location","Parameter"),all.x=TRUE)
+
+# [2015-10-14] Joining data to select min frequency matches
+#tmp<-dplyr::left_join(trends,df_minfreq,by=c("Location","Parameter"))
+#tmp2<-tmp[tmp$m==tmp$Value,]
+tmp2<-tmp[,c(1:6,8:16)]
+
+
+# ---------------------
+# [2015-10-14] Drop columns
+# Columns to keep
+# Location	Parameter	Altitude	Landuse	TrendScore	Frequency	Region	period
+# ARC-00014	DRP	      Lowland	  Urban         	-2	Monthly	  Auckland	5
+# ARC-00014	ECOLI    	Lowland	  Urban           0	  Monthly	  Auckland	5
+# ARC-00014	TN	      Lowland	  Urban         	0	  Monthly	  Auckland	5
+
+
+tmp2<-tmp2[,c(1,2,7,8,4,10,9,6)]
+names(tmp2) <-c("Location",	"Parameter",	"Altitude",	"Landuse",	"TrendScore",	"Frequency",	"Region",	"period")
+# remove any NA rows
+tmp2 <- tmp2[!is.na(tmp2$Location),]
+tmp2 <- tmp2[tmp2$period==5,]
+
+tmp0 <- rbind.data.frame(tmp1,tmp2)
 
 # ---------------------
 # Export to XL workbook
-write.csv(tmp1,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_fordelivery.csv")         ## 
+write.csv(tmp0,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_fordelivery.csv")         ## 
 
 # ---------------------
 # Housekeeping
-rm(trends,tmp,tmp1,df_minfreq,df_minfreq_Region,df_minfreq_Parameter,df_minfreq_Catchment,df_minfreq_length,lawadata,n,wqparam)
+rm(trends,trend_1,tmp,tmp1,df_minfreq,df_minfreq_Region,df_minfreq_Parameter,df_minfreq_Catchment,df_minfreq_length,lawadata,n,wqparam)
 
 
 # ======================
@@ -350,8 +510,12 @@ write.csv(state,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/state_
 
 
 # Load 10 year data pull - data.frame "lawadata"
+# This is the 10 year data set with any censoring applied to values
 load("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trenddata2007-2016.RData",verbose=TRUE)
-raw<-lawadata[,c(1,16,5,2,13,4,7,15,22,19,18,28,23)]
+
+raw<-lawadata[,c(1,14,13,5,2,3,4,7,21,20,16,17)]
+# [1] "SiteName"  "LAWAID"        "parameter"     "Date"          "Value"         "Method"        "CenType   
+# [8] "Agency"    "Region"        "AltitudeGroup" "LanduseGroup" 
 #rm(lawadata)
 
 raw<-raw[!is.na(raw$LAWAID),]
@@ -361,7 +525,7 @@ raw$Symbol<-""
 raw$Symbol[raw$CenType=="Left"]<-"<"
 raw$Symbol[raw$CenType=="Right"]<-">"
 
-raw$RawValue <- paste(raw$Symbol,raw$OriginalValue,sep="")
+raw$RawValue <- paste(raw$Symbol,raw$Value,sep="")
 raw$QC <- ""
 raw$Agency[grepl(pattern = "^NIWA",x=raw$Agency )] <- "NIWA"
 raw$Agency[grepl(pattern = "^Christchurch",x=raw$Agency )] <- "Christchurch"
@@ -373,10 +537,9 @@ raw$Disclaimer[raw$Agency=="Horizons"]    <- "The enclosed information is suppli
 However, as we endeavour to continuously improve our products, we reserve the right to amend the data on which this information is based, where necessary and without notice, at any time."
 raw$Disclaimer[raw$Agency=="Waikato"]     <- "Waikato Regional Council provides this information in good faith and has exercised all reasonable skill and care in controlling the content of this information, and accepts no liability in contract, tort or otherwise, for any loss, damage, injury or expense (whether direct, indirect or consequential) arising out of the provision of this information or its use by you."
 
-raw<-raw[,c(1:6,8:19)]
+raw<-raw[,c(1:7,9:18)]
 
-c <- c("Site", "SiteID",	"Measurement",	"DateTime",	"Original.Value", "Method",	"LAWAID", "Region",	"Landuse",	"Altitude",	"Catchment",	
-       "Agency",	"Symbol","Raw.Value","QC", "License",	"Ownership",	"Disclaimer")
+c <- c("Site", "SiteName","LAWAID",	"Measurement",	"DateTime",	"Original.Value", "Method",	"Agency", "Region",	"Altitude",	"Landuse",	"Symbol","Raw.Value","QC", "License",	"Ownership",	"Disclaimer")
 names(raw) <- c
 
 

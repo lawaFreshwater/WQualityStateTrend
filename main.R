@@ -23,16 +23,15 @@ source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualit
 
 ## STATE And TREND Analysis
 source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_5yr.R")
-#source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_trend_5yr.R")
-#source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_trend_10yr.R")
+source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_trend_x_yrs.R")
 
 ## NOF Analysis
-#source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/NOF_SWQ.R")
+source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/NOF_SWQ.R")
 
 ## Preparing data for Export
 source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/FinaliseTrend.R")
 source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_10yrsDataPull.R")
-#source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_dataForGraphingOnLaWA.R")
+source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/lawa_dataForGraphingOnLaWA.R")
 source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/scripts/WQualityStateTrend/PackageDataForDelivery.R")
 
 

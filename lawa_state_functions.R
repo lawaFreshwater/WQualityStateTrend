@@ -34,12 +34,12 @@
 # */
 
 
-pkgs <- c('XML', 'RCurl','ggplot2','gridExtra','plyr','reshape2','RODBC','doBy','NADA','gdata','survival')
+pkgs <- c('XML', 'RCurl','ggplot2','gridExtra','plyr','reshape2','RODBC','doBy','NADA','gdata','survival','lubridate','tidyr','dplyr','EnvStats')
 if(!all(pkgs %in% installed.packages()[, 'Package']))
   install.packages(pkgs, dep = T)
 
 require(XML)        # XML library
-require(RCurl)
+require(RCurl)      # managing, parsing URL calls and responses
 require(reshape2)   # melt, cast, ...
 require(ggplot2)    # pretty plots ...
 require(gridExtra)
@@ -49,6 +49,10 @@ require(doBy)
 require(NADA)
 require(gdata)
 require(survival)
+require(lubridate)
+require(tidyr)
+require(dplyr)
+require(EnvStats)   # Library from EPA with seasonal kendall
 
 #===================================================================================================
 #/* -===Pseudo-Function prototypes===- 
@@ -714,7 +718,18 @@ calcScore <- function(df1,df2,wqparam){
   return(df1)
 }
 
-calcTrendScore <- function(df1){
+
+calcTrendScore <- function(df1,trendMethod="ci"){
+  if(trendMethod=="sig"){
+    x<-calcTrendScore.sig(df1)
+  } else if(trendMethod=="ci"){
+    x<-calcTrendScore.ci(df1)
+  }
+  return(x)
+}
+
+
+calcTrendScore.sig <- function(df1){
   #names(seasonalkendall) <- c("LAWAID","Parameter","Sen.Pct","Sen.Slope","p.value")
   #trendscores <- calcTrendScore(seasonalkendall)
   
@@ -750,7 +765,41 @@ calcTrendScore <- function(df1){
   return(df1)
 }
 
-calcTrendScoreAggregate <- function(df1){
+
+calcTrendScore.ci <- function(df1){
+  #names(seasonalkendall) <- c("LAWAID","Parameter","Sen.Pct","Sen.Slope","p.value")
+  #trendscores <- calcTrendScore(seasonalkendall)
+  
+  df1 <- na.omit(df1)
+  # Step 1
+  # Start by setting trend score to 0
+  df1$TrendScore <- 0
+  
+  # Step 2
+  # Assessment of existance of slope based on Confidence limits
+  df1$zeroLocationCL90 <- FALSE    ## Set initial state for zero outside 90pct CI bounds
+  df1$zeroLocationCL90[df1$Sen.Slope.LCL90<0&seasonalkendall$Sen.Slope.UCL90>0] <- TRUE
+  df1$TrendScore[!df1$zeroLocationCL90] <- 1
+  
+  # Step 3
+  # Applying direction of slope to TrendScore
+  df1$TrendScore[df1$Parameter=="BDISC"&df1$Sen.Slope<0] <- df1$TrendScore[df1$Parameter=="BDISC"&df1$Sen.Slope<0]*-1
+  df1$TrendScore[df1$Parameter!="BDISC"&df1$Sen.Slope>0] <- df1$TrendScore[df1$Parameter!="BDISC"&df1$Sen.Slope>0]*-1
+  return(df1)
+
+}
+
+
+calcTrendScoreAggregate <- function(df1,trendMethod="ci"){
+  if(trendMethod=="sig"){
+    x<-calcTrendScoreAggregate.sig(df1)
+  } else if(trendMethod=="ci"){
+    x<-calcTrendScoreAggregate.ci(df1)
+  }
+  return(x)
+}
+
+calcTrendScoreAggregate.sig <- function(df1){
   #names(seasonalkendall) <- c("LAWAID","Parameter","Sen.Pct","Sen.Slope","p.value")
   #trendscores <- calcTrendScore(seasonalkendall)
   
@@ -783,6 +832,15 @@ calcTrendScoreAggregate <- function(df1){
   }
   return(df1)
 }
+
+calcTrendScoreAggregate.ci <- function(df1){
+  df1$TrendScoreAgg <- 0
+  df1$TrendScoreAgg[df1$Direction>0] <-  1
+  df1$TrendScoreAgg[df1$Direction<0] <- -1
+  
+  return(df1)
+}
+
 
 PlotSites1 <- function(df,label){
   
@@ -938,6 +996,42 @@ seaKenLAWA <- function (x,stat) {
 
 }
 
+
+seaKenEPA <- function(x,stat="median"){
+# this function depends on the EnvStats package, and was
+# developed against EnvStats v2.3.0
+  
+  test.data <- x
+  Unadj.Conc <- test.data$Value
+  Month<-test.data$mon
+  Year <- as.numeric(test.data$year)
+  Time <-test.data$yearMon
+  n<-length(Unadj.Conc)
+  Ten.Yr.Mean <- mean(Unadj.Conc,na.rm=TRUE)
+  Ten.Yr.Medn <- median(Unadj.Conc,na.rm=TRUE)
+  
+  test.output <- kendallSeasonalTrendTest(Unadj.Conc ~ Month + Year, data=test.data,conf.level=0.9)
+  sk.sen.slope     <- as.numeric(test.output$estimate[2])         # slope - estimated parameter
+  sk.sen.z         <- as.numeric(test.output$statistic[2])        # z statistic for trend slope
+  sk.p.value       <- as.numeric(test.output$p.value[2])          # p value for slope
+  sk.sen.z.prob    <- pnorm(sk.sen.z)
+  sk.sen.slope.pct <- 100 * sk.sen.slope/abs(Ten.Yr.Medn)
+  sk.slope.LCL90   <- as.numeric(test.output$interval$limits[1])  # Lower 90% confidence interval value
+  sk.slope.UCL90   <- as.numeric(test.output$interval$limits[2])  # Upper 90% confidence interval value
+    
+  list(sen.slope     = sk.sen.slope, 
+       sen.slope.pct = sk.sen.slope.pct, 
+       p.value       = sk.p.value,
+       sen.z         = sk.sen.z,
+       sen.z.prob    = sk.sen.z.prob,
+       slope.lcl90   = sk.slope.LCL90,
+       slope.ucl90   = sk.slope.UCL90)
+
+}
+
+
+
+
 prepareData <- function(value){
     
   # 1. Asterixes
@@ -968,6 +1062,9 @@ na_asterixes_val <- function(value){
   return(value)
 }
 
+
+## Function: Identify censored values
+##     Assumption: all values with < or > symbols are non-zero
 flagCensoredDataDF <- function(df){
    df$Censored<-FALSE
    df$CenType<-"FALSE"
@@ -995,6 +1092,10 @@ flagCensoredDataDF <- function(df){
   df$CenType[n==TRUE] <- "Right"
   # Remove < symbol
   df$Value[n==TRUE]<-gsub(pattern = "^>", replacement = "", x = df$Value[n==TRUE])
+  
+  ## Added 30-08-2017 to deal with <0 values
+  df$Censored[df$CenType=='Left' & df$Value==0]<-FALSE
+  df$CenType[df$CenType=='Left' & df$Value==0] <- "FALSE"
   
   return(df)
 }
@@ -1173,22 +1274,22 @@ TrendCriteria <- function (first_20pct, last__20pct, num_samples, rate, years, m
 }
 
 samplesByInterval <- function (StartYear, EndYear, StartMonth, EndMonth, lawadata) {
-  # Creating YYYY-MM values for period of trend analysis
-  for(i in StartYear:EndYear){
-    for(j in StartMonth:EndMonth){
-      if(i==StartYear && j==StartMonth){
-        #Using formatC to pad months 1-9 with leading zero
-        arr<-paste(i,"-",formatC(j, width = 2, format = "d", flag = "0") ,sep="")
-      } else {
-        arr<-c(arr,paste(i,"-",formatC(j, width = 2, format = "d", flag = "0") ,sep=""))
-      }
-    }
-  }
-  
-  
-  #Setting up data frames with one value per month, bimonth and quarter
-  aa<- as.data.frame(arr)
-  names(aa) <- c("yearMon")
+  # # Creating YYYY-MM values for period of trend analysis
+  # for(i in StartYear:EndYear){
+  #   for(j in StartMonth:EndMonth){
+  #     if(i==StartYear && j==StartMonth){
+  #       #Using formatC to pad months 1-9 with leading zero
+  #       arr<-paste(i,"-",formatC(j, width = 2, format = "d", flag = "0") ,sep="")
+  #     } else {
+  #       arr<-c(arr,paste(i,"-",formatC(j, width = 2, format = "d", flag = "0") ,sep=""))
+  #     }
+  #   }
+  # }
+  # 
+  # 
+  # #Setting up data frames with one value per month, bimonth and quarter
+  # aa<- as.data.frame(arr)
+  # names(aa) <- c("yearMon")
   
   lawadata$depth <- 0   # indicating surface samples
   
@@ -1196,14 +1297,34 @@ samplesByInterval <- function (StartYear, EndYear, StartMonth, EndMonth, lawadat
   lawadata$mon <- as.character(lawadata$Date,format="%m")
   lawadata$yearMon <- paste(lawadata$year,"-",lawadata$mon,"-01",sep="")
   
+  # West Coast adjustment given they collect seasons based on actual seasons, not annual quarters
+  wcrc <- lawadata[lawadata$Agency=="WCRC",]
+  wcrc <- wcrc[complete.cases(wcrc$SiteName),]
+  wcrc$yearMon<- as.character(ymd(wcrc$yearMon) %m+% months(1))
+  sum(is.na(wcrc$yearMon))
+  
+  lawadata <- lawadata[!lawadata$Agency=="WCRC",]
+  lawadata <- rbind.data.frame(lawadata,wcrc)
+  lawadata <- lawadata[!is.na(lawadata$Date),]
+  rm(wcrc)
+  
+  # Resetting year and mon variables based on update to WCRC
+  #lawadata$year <- as.character(lawadata$yearMon,format="%Y")
+  #lawadata$mon <- as.character(lawadata$yearMon,format="%m")
+  
+  lawadata$year <- substr(lawadata$yearMon,start = 1,stop=4)
+  lawadata$mon  <- substr(lawadata$yearMon,start = 6,stop=7)
+  
   lawadata$bimon <- floor((as.numeric(lawadata$mon)-1)/2)*2+1 # returns 1,2,3,4,5,6 depending on bimonth of year month falls in
   lawadata$yearBimon <- paste(lawadata$year,"-",formatC(lawadata$bimon, width = 2, format = "d", flag = "0"),"-01",sep="")
   
-  
   lawadata$Qtr <- floor((as.numeric(lawadata$mon)-1)/3)*3+1 # returns 1,2,3,4 depending on quarter of year month falls in
   lawadata$yearQtr <- paste(lawadata$year,"-",formatC(lawadata$Qtr, width = 2, format = "d", flag = "0"),"-01",sep="")
+  
   return(lawadata)
 }
+
+
 
 #Ton Snelder 
 #LWP Ltd
@@ -1238,7 +1359,7 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
   # x<-tmp
   # forwardT="log"
   # reverseT="exp"
-  # ------------------------------------------------------------------------------------------------
+  #------------------------------------------------------------------------------------------------
   # Sean Hodges 2017-07-09
   # This routine differs from the originally supplied censoring algorithm
   # The following code block adds in the variables described above. This should be worked into the
@@ -1247,7 +1368,7 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
   # x$dflag            :a flag indicating whether the raw data are left censored ("dl"), right censored ("al"), 
   #                     or within the lower and upper detection limits ("ok")
   x$converted_values <- x$Value
-  
+  # 
   x$dflag <- "ok"
 
   x$dflag[x$Censored==TRUE & x$CenType=="Left"] <- "dl"
@@ -1255,6 +1376,7 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
   # ------------------------------------------------------------------------------------------------
   
   myData <- x
+  #names(myData) <- c("SiteName","Date","converted_values","Method","parameter","Censored","CenType","dflag"  )
   myData$dflag <- as.character(myData$dflag)
   #cat("Site = ", as.character(x$SiteName)[1], " & Variable = ", as.character(x$parameter)[1], "\n")
   

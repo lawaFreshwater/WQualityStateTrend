@@ -57,12 +57,22 @@ EndYear <- 2016
 
 source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
+HilltopLibrary<-FALSE
+library(Hilltop)
+HilltopLibrary<-TRUE
+#-- Specifying source files - note that these connections are pulling from SOE folder on HilltopDEV
+
+if(HilltopLibrary==TRUE){
+  lawa            <- Hilltop::HilltopData("//hilltopdev/data/lawa2017/state/lawa_provisional_2017.dsn")
+}
+
 #/* -===Global variable/constant definitions===- */ 
 vendor <- c("52NORTH","AQUATIC","HILLTOP","KISTERS")
 
 
 #/* -===Local variable/constant definitions===- */
-wqparam <- c("BDISC","TURB","NH4","TON","TN","DRP","TP","ECOLI") 
+# Need to retain PH in this list for NOF Calculations later
+wqparam <- c("BDISC","TURB","NH4","PH","TON","TN","DRP","TP","ECOLI") 
 #wqparam <- c("BDISC") 
 tss <- 3  # tss = time series server
 #tss_url <- "http://hilltopdev.horizons.govt.nz/lawa2014.hts?"
@@ -86,8 +96,9 @@ hts <- c("service=Hilltop",
 # Site data request
 
 #l <- SiteTable(databasePathFileName="//ares/waterquality/LAWA/2013/hilltop.mdb",sqlID=2) ## Assumes all sites have hilltop.mdb site names
-requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
-
+if(HilltopLibrary==FALSE){
+  requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+}
 # Replace database call here with call to previously loaded WFS Site data
 #l <- SiteTable(databasePathFileName="//file/herman/R/OA/08/02/2016/MASTER SiteList/lawa_2016.mdb",sqlID=3) ## Allows for different sitenames in hilltop.mdb - requires assessment and population of the database.
 l <- read.csv("LAWA_Site_Table1.csv",stringsAsFactors=FALSE)
@@ -96,9 +107,12 @@ l <- read.csv("LAWA_Site_Table1.csv",stringsAsFactors=FALSE)
 
 l$SWQLanduse[l$SWQLanduse=="Native"|l$SWQLanduse=="Exotic"|l$SWQLanduse=="Natural"] <- "Forest"
 
-r <- requestData(vendor[tss],tss_url,request=paste(hts[1],hts[2],sep=""))
-s <- SiteList(r)
-
+if(HilltopLibrary==TRUE){
+  s <- Hilltop::SiteList(lawa)
+} else {
+  r <- requestData(vendor[tss],tss_url,request=paste(hts[1],hts[2],sep=""))
+  s <- SiteList(r)
+}
 
 cat("LAWA Water QUality State Analysis\n","Number of sites returned:",length(s))
 
@@ -114,19 +128,50 @@ cat("LAWA Water QUality State Analysis\n","Number of sites returned:",length(s))
 #   cat(wqparam[i]," sites returned: ",length(unique(wqdata$SiteName)),"\n",sep="")
 # }
 
+
 # -=== WQ PARAMETERS ===-
 #requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
 for(i in 1:length(wqparam)){
-
-  requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+# for(i in 4:4){
+  ## Added Hilltop library 2017-09-07
+  if(HilltopLibrary==FALSE){
+    requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
+  }
   cat("Starting",wqparam[i],"\n")
-  r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
-  #r <- requestData(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
-  wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop")
-  wqdata$Value <- as.character(wqdata$Value)
-  wqdata$parameter <- wqparam[i]
-  
-  
+
+  if(HilltopLibrary==TRUE){
+    lawa_collection <- GetCollection.HilltopData(lawa, "//hilltopdev/c$/HilltopServer/LAWA_collections.xml",paste("LAWA",wqparam[i],sep="_"))
+    mySites<-unique(lawa_collection[,1])
+    myMeas<-unique(lawa_collection[,2])
+    for(ii in 1:length(mySites)){
+      dx <- try(GetData(lawa,mySites[ii], myMeas, startTime=paste(StartYear,"-01-01",sep=""), endTime=paste(EndYear + 1,"-01-01",sep=""), WQParams=FALSE),silent=TRUE)
+      if(attr(dx,"class")!="try-error"){
+        if(!exists("wqdata")){
+          x1 <- unlist(attr(dx,"dimnames"))
+          x1df <- data.frame(index(dx),as.character(coredata(dx)),stringsAsFactors = FALSE)
+          x1df$SiteName<-mySites[ii];x1df$parameter<-wqparam[i];x1df$Method<-""
+          x1df <- x1df[,c(3,1,2,5,4)]
+          names(x1df) <- c("SiteName" , "Date"  ,    "Value"   ,  "Method"  ,  "parameter")
+          wqdata <- x1df
+        } else {
+          x1 <- unlist(attr(dx,"dimnames"))
+          x1df <- data.frame(index(dx),as.character(coredata(dx)),stringsAsFactors = FALSE)
+          x1df$SiteName<-mySites[ii];x1df$parameter<-wqparam[i];x1df$Method<-""
+          x1df <- x1df[,c(3,1,2,5,4)]
+          names(x1df) <- c("SiteName" , "Date"  ,    "Value"   ,  "Method"  ,  "parameter")
+          wqdata <- rbind.data.frame(wqdata,x1df,stringsAsFactors = FALSE)
+        }
+        rm(x1,x1df)
+      }
+    }
+    
+  } else {
+    r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
+    #r <- requestData(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
+    wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop")
+    wqdata$Value <- as.character(wqdata$Value)
+    wqdata$parameter <- wqparam[i]
+  }
   # ------------------------
   # Handling censored data
   # ------------------------
@@ -281,13 +326,13 @@ for(i in 1:length(wqparam)){
 #                             data=wqdata_A, 
 #                             FUN=c(median), na.rm=TRUE, keep.name=TRUE)
     
-    ## using hazen method for median - quantile(prob=c(0.5),type=5)
-    wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
-                            id=~ID+Agency+Region+NZREACH+
-                              LanduseGroup+AltitudeGroup+Catchment+CatchLbl+Frequency+
-                              Comments+UsedInLAWA,
-                            data=wqdata_A, 
-                            FUN=c(quantile), prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
+  ## using hazen method for median - quantile(prob=c(0.5),type=5)
+  wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
+                          id=~ID+Agency+Region+NZREACH+
+                            LanduseGroup+AltitudeGroup+Catchment+CatchLbl+Frequency+
+                            Comments+UsedInLAWA,
+                          data=wqdata_A, 
+                          FUN=c(quantile), prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
   
   # Building dataframe to save at the end of this step 
   if(i==1){
@@ -318,42 +363,47 @@ for(i in 1:length(wqparam)){
   #   - less than 30 samples for monthly samples
   #   - less than 80 percent of samples for bimonthly/quarterly
   
-  
-  cat("LAWA Water Quality State Analysis\n",wqparam[i])
-  
-  print(Sys.time() - x)
-  
-  cat("\nLAWA Water QUality State Analysis\nCalculating reference quartiles\n")
-  
-  state <- c("Site","Catchment","Region","NZ")
-  level <- c("LandUseAltitude","LandUse","Altitude","None")
-  
-  sa11 <- StateAnalysis(wqdata,state[1],level[1])
-  
-  sa21 <- StateAnalysis(wqdata,state[2],level[1])
-  sa22 <- StateAnalysis(wqdata,state[2],level[2])
-  sa23 <- StateAnalysis(wqdata,state[2],level[3])
-  sa24 <- StateAnalysis(wqdata,state[2],level[4])
-  
-  sa31 <- StateAnalysis(wqdata,state[3],level[1])
-  sa32 <- StateAnalysis(wqdata,state[3],level[2])
-  sa33 <- StateAnalysis(wqdata,state[3],level[3])
-  sa34 <- StateAnalysis(wqdata,state[3],level[4])
-  
-  sa41 <- StateAnalysis(wqdata,state[4],level[1])
-  sa42 <- StateAnalysis(wqdata,state[4],level[2])
-  sa43 <- StateAnalysis(wqdata,state[4],level[3])
-  sa44 <- StateAnalysis(wqdata,state[4],level[4])
-  
-  cat("LAWA Water QUality State Analysis\n","Binding ",wqparam[i]," data together for measurement\n")
-  
-  if(i==1){
-    sa <- rbind(sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
-  } else {
-    sa <- rbind(sa,sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
+  # Exclude PH
+  if(wqparam[i]!="PH0"){
+    cat("LAWA Water Quality State Analysis\n",wqparam[i])
+    
+    print(Sys.time() - x)
+    
+    cat("\nLAWA Water QUality State Analysis\nCalculating reference quartiles\n")
+    
+    state <- c("Site","Catchment","Region","NZ")
+    level <- c("LandUseAltitude","LandUse","Altitude","None")
+    
+    sa11 <- StateAnalysis(wqdata,state[1],level[1])
+    
+    sa21 <- StateAnalysis(wqdata,state[2],level[1])
+    sa22 <- StateAnalysis(wqdata,state[2],level[2])
+    sa23 <- StateAnalysis(wqdata,state[2],level[3])
+    sa24 <- StateAnalysis(wqdata,state[2],level[4])
+    
+    sa31 <- StateAnalysis(wqdata,state[3],level[1])
+    sa32 <- StateAnalysis(wqdata,state[3],level[2])
+    sa33 <- StateAnalysis(wqdata,state[3],level[3])
+    sa34 <- StateAnalysis(wqdata,state[3],level[4])
+    
+    sa41 <- StateAnalysis(wqdata,state[4],level[1])
+    sa42 <- StateAnalysis(wqdata,state[4],level[2])
+    sa43 <- StateAnalysis(wqdata,state[4],level[3])
+    sa44 <- StateAnalysis(wqdata,state[4],level[4])
+    
+    cat("LAWA Water QUality State Analysis\n","Binding ",wqparam[i]," data together for measurement\n")
+    
+    if(i==1){
+      sa <- rbind(sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
+    } else {
+      sa <- rbind(sa,sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
+    }
   }
-  
+  rm(wqdata)
 }
+
+# disconnect from Hilltop object
+Hilltop::disconnect(lawa)
 
 # Housekeeping
 # - Saving the lawadata table
@@ -364,6 +414,11 @@ save(l,file="//file/herman/r/oa/08/02/2017/Water Quality/ROutput/lawa_sitetable.
 load(file=paste("//file/herman/r/oa/08/02/2017/Water Quality/ROutput/lawadata",StartYear,"-",EndYear,".RData",sep=""))
 #Sites that are missing LAWAIDs
 chkbb<- unique(lawadata$SiteName[is.na(lawadata$LAWAID)])
+# -- WORTH CHECKING _WHY_ SITES ARE MISSING LAWA IDs
+# Check:
+# 1. There may be differences in siteIds and Council siteids when data is joined, resulting
+#    in unintended omissions.
+
 
 cat("Number of unique sites",length(unique(lawadata$SiteName)))
 cat("Number of unique LAWAIDs",length(unique(lawadata$LAWAID)))
@@ -429,7 +484,7 @@ for(i in 1:3){
   # Need to put a test into the StateScore function to return an empty dataframe
   
   # RE-ENABLE THIS ONCE BOPRC data available
-  #ss413 <- StateScore(sa,scope[i],"Upland","Urban",wqparam,comparison=4)
+  ss413 <- StateScore(sa,scope[i],"Upland","Urban",wqparam,comparison=4)
   
   ss421 <- StateScore(sa,scope[i],"Lowland","Rural",wqparam,comparison=4)
   ss422 <- StateScore(sa,scope[i],"Lowland","Forest",wqparam,comparison=4)

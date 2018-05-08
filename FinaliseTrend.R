@@ -46,24 +46,24 @@ EndYear <- 2016
 
 # Trend pass/fail logs
 vm<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_monthly_",StartYear,"-",EndYear,".csv",sep=""))
-vb<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
+#vb<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
 vq<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_quarterly_",StartYear,"-",EndYear,".csv",sep=""))
 
 # Trend results
 m<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_monthly_",StartYear,"-",EndYear,".csv",sep=""))
-b<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
+#b<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
 q<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_quarterly_",StartYear,"-",EndYear,".csv",sep=""))
 
 m$m<-12
-b$m<-6
+#b$m<-6
 q$m<-4
 
 # Append Dataframes
-vmbq5  <- rbind.data.frame(vm,vb,vq)
+#vmbq5  <- rbind.data.frame(vm,vb,vq)
 vmbq5  <- rbind.data.frame(vm,vq)
 vmbq5$period<-5
 
-mbq5 <- rbind.data.frame(m,b,q)
+#mbq5 <- rbind.data.frame(m,b,q)
 # Dropping bimonthly from finalised trend - NIWA recommendation
 mbq5 <- rbind.data.frame(m,q)
 mbq5$period<-5
@@ -76,27 +76,27 @@ StartYear <- 2007
 EndYear <- 2016
 
 vm<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_monthly_",StartYear,"-",EndYear,".csv",sep=""))
-vb<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
+#vb<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
 vq<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_quarterly_",StartYear,"-",EndYear,".csv",sep=""))
 
 m<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_monthly_",StartYear,"-",EndYear,".csv",sep=""))
-b<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
+#b<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_bimonthly_",StartYear,"-",EndYear,".csv",sep=""))
 q<-read.csv(file=paste("//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_quarterly_",StartYear,"-",EndYear,".csv",sep=""))
 
 m$m<-12
-b$m<-6
+#b$m<-6
 q$m<-4
 
 # Append Dataframes
-vmbq9 <- rbind.data.frame(vm,vb,vq)
+#vmbq9 <- rbind.data.frame(vm,vb,vq)
 vmbq9 <- rbind.data.frame(vm,vq)
 vmbq9$period<-10
 
-mbq9 <- rbind.data.frame(m,b,q)
+#mbq9 <- rbind.data.frame(m,b,q)
 # Dropping bimonthly from finalised trend - NIWA recommendation
 mbq9 <- rbind.data.frame(m,q)
 mbq9$period<-10
-rm(m,b,q,vm,vb,vq)
+rm(m,q,vm,vq)
 
 mbq <- rbind.data.frame(mbq5,mbq9)
 vmbq <- rbind.data.frame(vmbq5,vmbq9)
@@ -107,9 +107,33 @@ vmbq <- rbind.data.frame(vmbq5,vmbq9)
 # ========================
 
 # Load exclusion file
-exclusions <- read.csv(file="//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/TrendExclusion2016.csv",stringsAsFactors=FALSE)
+exclusions <- read.csv(file="//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/TrendExclusion2017.csv",stringsAsFactors=FALSE)
 
-# Mark records for exclusion
+## BEGIN CODE ADDITION   ID==CawthronSwitchTrendOutput ------------
+## ID:   CawthronSwitchTrendOutput
+## DATE: 2018-02-14 
+## BY:   Sean Hodges
+##       Horizons Regional Council
+## DESC: Councils may choose not to have trend data presented on LAWA. The LAWA code
+##       uses an exclusion file to drop data from agencies, regions and sites at 
+##       each Councils request. This code addition introduces a switch to turn off
+##       exclusions based on regions.
+## OPTIONAL STEP
+## Created to address request from Cawthron, and endorsed by EMAR Project Manager, 
+## for all trend data from all councils, irrespective of Taranaki's exclusion
+##
+## Create a variable to control execution of this additional code.
+## This would best be handled by a config or ini file for this code, but for
+## time-being, we'll hardcode directly in this script.
+## OPTIONAL STEP STATUS
+CawthronSwitchTrendOutput <- TRUE
+
+if(CawthronSwitchTrendOutput==TRUE){
+exclusions <- exclusions[exclusions$Type!="Region",]
+}
+## END CODE ADDITION
+
+# Mark records for exclusion------------
 mbq$Exclusion <- FALSE
 xagency<-exclusions[exclusions$Type=="Agency",]
 xregion<-exclusions[exclusions$Type=="Region",]
@@ -143,47 +167,101 @@ cat("Dropping records from trends as requested by Councils:\n",sum(mbq$Exclusion
 mbq <- mbq[mbq$Exclusion==FALSE,]  # <-- only retain those records where the exclusion column contains a FALSE value.
 
 # ========================
-
+# Significant results now a deprecated approach based on Larned et al (2015)
 # Flag significant results
-mbq$p.sig <- ifelse(mbq$p.value<=0.05,1,0)
+#mbq$p.sig <- ifelse(mbq$p.value<=0.05,1,0)
 
 # Summary for significant results at a catchment level
-s <- summaryBy(p.sig~period+Catchment+Parameter+m,  
+# s <- summaryBy(p.sig~period+Catchment+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(sum), na.rm=TRUE, keep.name=TRUE)
+# t <- summaryBy(p.sig~period+Catchment+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(length), keep.name=TRUE)
+# u <- summaryBy(Sen.Pct~period+Catchment+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(mean), keep.name=TRUE)
+
+# Flag results outside the 100(1–2α)% confidence interval for trend direction-testing
+mbq$trend.flag <- ifelse(mbq$zeroLocationCL90,0,1)
+
+# For catchments, this summaryBy statement sums up how many
+# sites have a trend direction (but does not indicate what direction)
+# The trend.flag column is populate with 1's and 0's
+s <- summaryBy(trend.flag~period+Catchment+Parameter+m,  
                data=mbq, 
                FUN=c(sum), na.rm=TRUE, keep.name=TRUE)
-t <- summaryBy(p.sig~period+Catchment+Parameter+m,  
+
+# For catchments, this summaryBy statement determines how many (vector length)
+# site/measurement combos have had trend estimation applied.
+t <- summaryBy(trend.flag~period+Catchment+Parameter+m,  
                data=mbq, 
                FUN=c(length), keep.name=TRUE)
-u <- summaryBy(Sen.Pct~period+Catchment+Parameter+m,  
+
+# For catchments, this summaryBy statement determines the median
+# index value for -1, 0 or 1 trend scores  ## CONFIRM APPROACH
+# The sign of the resulting median will then give direction of catchment trend
+u <- summaryBy(TrendScore~period+Catchment+Parameter+m,  
                data=mbq, 
-               FUN=c(mean), keep.name=TRUE)
-s$count<-t$p.sig
-s$p.flag <- s$p.sig/s$count
-s$Sen.Pct <- u$Sen.Pct
+               FUN=c(median), keep.name=TRUE)
+
+
+s$Samples<-t$trend.flag # How many sites have trends estimates applied in Catchment
+s$Trend.Proportion <- s$trend.flag/s$Samples # proportion of site/parameter combos with trend direction in catchment
+s$Direction <- u$TrendScore # sign of this value gives direction for trend in catchment
 
 v<-calcTrendScoreAggregate(s)
 
-# Summary for significant results at a regional level
-s <- summaryBy(p.sig~period+Region+Parameter+m,  
+# # Summary for significant results at a regional level
+# s <- summaryBy(p.sig~period+Region+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(sum), na.rm=TRUE, keep.name=TRUE)
+# t <- summaryBy(p.sig~period+Region+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(length), keep.name=TRUE)
+# u <- summaryBy(Sen.Pct~period+Region+Parameter+m,  
+#                data=mbq, 
+#                FUN=c(mean), keep.name=TRUE)
+# s$count<-t$p.sig
+# s$p.flag <- s$p.sig/s$count
+# s$Sen.Pct <- u$Sen.Pct
+
+# # Flag results outside the 100(1–2α)% confidence interval for trend direction-testing
+# For regions, this summaryBy statement sums up how many
+# sites have a trend direction (but does not indicate what direction)
+# The trend.flag column is populate with 1's and 0's
+s <- summaryBy(trend.flag~period+Region+Parameter+m,  
                data=mbq, 
                FUN=c(sum), na.rm=TRUE, keep.name=TRUE)
-t <- summaryBy(p.sig~period+Region+Parameter+m,  
+
+# For regions, this summaryBy statement determines how many (vector length)
+# site/measurement combos have had trend estimation applied.
+t <- summaryBy(trend.flag~period+Region+Parameter+m,  
                data=mbq, 
                FUN=c(length), keep.name=TRUE)
-u <- summaryBy(Sen.Pct~period+Region+Parameter+m,  
+
+# For regions, this summaryBy statement determines the median
+# index value for -1, 0 or 1 trend scores  ## CONFIRM APPROACH
+# The sign of the resulting median will then give direction of catchment trend
+u <- summaryBy(TrendScore~period+Region+Parameter+m,  
                data=mbq, 
-               FUN=c(mean), keep.name=TRUE)
-s$count<-t$p.sig
-s$p.flag <- s$p.sig/s$count
-s$Sen.Pct <- u$Sen.Pct
+               FUN=c(median), keep.name=TRUE)
+
+
+s$Samples<-t$trend.flag # How many sites have trends estimates applied in Region
+s$Trend.Proportion <- s$trend.flag/s$Samples # proportion of site/parameter combos with trend direction in Region
+s$Direction <- u$TrendScore # sign of this value gives direction for trend in Region
 
 w<-calcTrendScoreAggregate(s)
+
 w$Catchment <- ""
 v$Region <- ""
 z<-rbind.data.frame(v,w)
 
 # OUTPUT data to CSVs
 write.csv(vmbq,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/validDataForTrend_combined.csv")  ## LOG PASS-FAIL for Trend analysis
+write.csv(vmbq,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/SitesMeetingTrendCriteria.csv")   ## LOG PASS-FAIL for Trend analysis   ## A more sensible name to use when sharing this file
+
 rm(vmbq,vmbq5,vmbq9)
 write.csv(mbq,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_sites_freq_combined.csv")    ## COMBINED TREND DATA FOR 5 AND 10 YEARS
 write.csv(z,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_catchment_region.csv")         ## 
@@ -194,18 +272,20 @@ write.csv(z,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_catc
 mbq$Location <- mbq$LAWAID
 z$Location <- paste(z$Region,as.character(z$Catchment),sep="")
 
-#c <- mbq[c(2,3,8,26,27,12,13,16,15)]   # This vector needs editing if site table changes. 
-#c <- mbq[c(2,3,15,16,8,38,18,12,39)]   # This vector needs editing if site table changes. 
-#c <- mbq[c(2,3,15,16,8,36,18,12,37)]  # This vector needs editing if site table changes. 
-#c <- mbq[c(2,3,15,16,8,60,18,12,61)]
+## Adding in applied quarterly/monthly frequency data
+#c <- mbq[c(2,3,8,27,28,7,13,14,17,16)]
 
-#c <- mbq[c(2,3,8,26,27,13,14,17,16)]   # This vector needs editing if site table changes. 
+c <- mbq[c(36,3,12,32,33,11,18,19,22,21)]
 
-c <- mbq[c(2,3,8,27,28,13,14,17,16)]
-names(c) <- c("Location","Parameter","TrendScore","m","period","Altitude","Landuse","Region","Frequency")
+names(c) <- c("Location","Parameter","TrendScore","m","period","Freq",
+              "Altitude","Landuse","Region","Frequency")
 #names(c) <- c("Location","Parameter","Altitude","Landuse","TrendScore","m","Frequency","Region","period")
 
-d <- z[c(11,3,9,4,1)]                  # This vector needs checking if fields added or removed.
+# This vector needs checking if fields added or removed
+d <- z[c(11,3,9,4,1)]  ## Location,Parameter,TrendScore,m,period
+names(d) <- c("Location","Parameter","TrendScore","m","period")
+
+d$Freq<-""
 d$Altitude <- "ALL"
 d$Landuse <- "ALL"
 d$Region <- ""
@@ -221,4 +301,5 @@ e <- rbind.data.frame(c,d)
 
 ## SAVE FINAL FILE SUMMARISING TREND RESULTS
 write.csv(e,file="//file/herman/R/OA/08/02/2017/Water Quality/ROutput/trend_sites_catchment_region.csv")
+
 setwd(od)
