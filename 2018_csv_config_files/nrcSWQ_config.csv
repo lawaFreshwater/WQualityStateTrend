@@ -1,0 +1,47 @@
+Council,Value,Type
+NRC,100194,Site
+NRC,100237,Site
+NRC,100281,Site
+NRC,100363,Site
+NRC,100370,Site
+NRC,101524,Site
+NRC,101530,Site
+NRC,100007,Site
+NRC,101625,Site
+NRC,102248,Site
+NRC,102249,Site
+NRC,102256,Site
+NRC,102257,Site
+NRC,102258,Site
+NRC,102674,Site
+NRC,103178,Site
+NRC,103304,Site
+NRC,105008,Site
+NRC,105231,Site
+NRC,105532,Site
+NRC,108359,Site
+NRC,108941,Site
+NRC,108978,Site
+NRC,108979,Site
+NRC,109020,Site
+NRC,109021,Site
+NRC,109096,Site
+NRC,109098,Site
+NRC,110431,Site
+NRC,110603,Site
+NRC,101753,Site
+NRC,101038,Site
+NRC,Turbidity [Turbidity (X)],Measurement
+NRC,Total Nitrogen,Measurement
+NRC,Dissolved Reactive Phosphorus,Measurement
+NRC,pH [pH (Discrete)],Measurement
+NRC,Total Kjeldahl Nitrogen,Measurement
+NRC,pH (Discrete),Measurement
+NRC,Ammoniacal Nitrogen,Measurement
+NRC,Escherichia coli,Measurement
+NRC,Nitrate Nitrogen,Measurement
+NRC,Nitrite Nitrogen,Measurement
+NRC,Nitrite/nitrate nitrogen,Measurement
+NRC,Secchi Depth,Measurement
+NRC,Total Phosphorus,Measurement
+NRC,WQ Sample,Measurement

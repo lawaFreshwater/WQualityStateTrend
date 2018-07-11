@@ -1,0 +1,75 @@
+Council,Value,Type
+GDC,Awapuni Drain Site 4 D/S Wetland Outlet at Fence Line,Site
+GDC,Awatere River at SH35 Bridge,Site
+GDC,Hamanatua Stream at Okitu Bridge,Site
+GDC,Hikuwai River at No 4 Bridge,Site
+GDC,Hikuwai River at Willowflat,Site
+GDC,Ihungia River at Ihungia Rd Br,Site
+GDC,Karakatuwhero River at SH35 Br,Site
+GDC,Kopuawhakapata Stream at Hirini St,Site
+GDC,Mangaheia River at Paroa Road Bridge,Site
+GDC,Mangaoporo River at Tutamatai Bridge,Site
+GDC,Mangaoporo River at Tutamatai Bridge 18314003,Site
+GDC,Mangatu River at Omapere Station,Site
+GDC,Mangatutu Str at Sh35-Waipahuru Bridge,Site
+GDC,Mata at Mata Bridge Telemetry Station,Site
+GDC,Mata River at Pouturu Br,Site
+GDC,Mata River at Aorangi (Makarika Road),Site
+GDC,Matawai Stream at Tawai,Site
+GDC,Matawai Stream at Tawai 16521512,Site
+GDC,Motu River @ Matawai Conserv Area,Site
+GDC,Motu River above Falls,Site
+GDC,Motu River at Kotare Station Bridge,Site
+GDC,Oweka River at SH35 Bridge,Site
+GDC,Pakarae River at Pakarae Station Bridge,Site
+GDC,Poroporo River at Rangitukia Rd Bridge,Site
+GDC,Taruheru River at Tuckers Rd Bridge,Site
+GDC,Te Arai River at Pykes Weir,Site
+GDC,Turanganui River at Gladstone Rd Bridge,Site
+GDC,Waihirere Stream @ Domain,Site
+GDC,Waikanae Creek at Grey St Bridge,Site
+GDC,Waikohu River at Mahaki Station,Site
+GDC,Waimata River at Goodwins Rd Bridge,Site
+GDC,Waimata River at Monowai Bridge,Site
+GDC,Waimata River at Monowai Bridge 19600056,Site
+GDC,Waingaromia River at Terrace Station,Site
+GDC,Waingaromia River at Terrace Station 19722001,Site
+GDC,Wainui Stream at Pare Street,Site
+GDC,Waiomoko River at SH35 Bridge,Site
+GDC,Waiomoko River at SH35 Bridge 19200001,Site
+GDC,Waipaoa River at Kanakanaia,Site
+GDC,Waipaoa River at Kanakanaia Bridge,Site
+GDC,Waipaoa River at Matawhero Bridge,Site
+GDC,Whakaahu Stream at Brunton Rd,Site
+GDC,Whakaahu Stream at Brunton Rd 19704009,Site
+GDC,Wharekahika River U/S Of Wharf Bridge,Site
+GDC,Wharekopae River at Rangimoe,Site
+GDC,Ammonia - Nitrogen as N g/m3,Measurement
+GDC,Clarity Tube (cm)-Field,Measurement
+GDC,Dissolved Inorganic Nitrogen (DIN),Measurement
+GDC,Dissolved Organic Phosphorus,Measurement
+GDC,Dissolved Reactive Phosphorus g/m3 P,Measurement
+GDC,DRP - P. Orhto g/m3 P,Measurement
+GDC,E.Coli CFU/100mL,Measurement
+GDC,E-Coli MPN/100ml,Measurement
+GDC,Esh Colis Colilert,Measurement
+GDC,Nitrate - Nitrogen as N g/m3,Measurement
+GDC,Nitrate + Nitrite,Measurement
+GDC,Nitrate NO3 g/m3,Measurement
+GDC,Nitrite (as NO2),Measurement
+GDC,Nitrite g/m3 N,Measurement
+GDC,Nitrogen (Ammonium),Measurement
+GDC,Nitrogen (Dissolved Ammonia),Measurement
+GDC,pH,Measurement
+GDC,pH (Field),Measurement
+GDC,pH (Lab),Measurement
+GDC,Secchi Black Disc (metres) water clarity,Measurement
+GDC,Total Nitrate-(Nitrite + Nitrate),Measurement
+GDC,Total Nitrogen,Measurement
+GDC,Total Oxidised Nitrogen,Measurement
+GDC,Total Oxidised Nitrogen (Calculation),Measurement
+GDC,Total Phosphorus as P  g/m3,Measurement
+GDC,Turbidity,Measurement
+GDC,Turbidity (Field),Measurement
+GDC,Turbidity NTU (nephelmetric turb units),Measurement
+GDC,WQ Sample,Measurement

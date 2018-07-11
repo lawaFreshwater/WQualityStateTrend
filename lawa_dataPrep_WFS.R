@@ -2,9 +2,8 @@
 #  LAWA DATA PREPARATION - WFS
 #  Horizons Regional Council
 #
-#  28 August 2016
+#  4 July 2018
 #
-#  Jorn Sijbertsma
 #  Sean Hodges
 #  Horizons Regional Council
 #===================================================================================================
@@ -16,10 +15,10 @@ ANALYSIS<-"LOAD WFS"
 # Set working directory
 
 od <- getwd()
-wd <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\R\\lawa_state"
+wd <- "\\\\file\\herman\\R\\OA\\08\\02\\2018\\Water Quality\\R\\lawa_state"
 setwd(wd)
 
-logfolder <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\ROutput\\"
+logfolder <- "\\\\file\\herman\\R\\OA\\08\\02\\2018\\Water Quality\\ROutput\\"
 
 #/* -===Include required function libraries===- */ 
 
@@ -32,10 +31,11 @@ source("scripts/WQualityStateTrend/lawa_state_functions.R")
 
 ld <- function(url,dataLocation,case.fix=TRUE){
   if(dataLocation=="web"){
-    (download.file(url,destfile="tmp1",method="wininet"))
-    if(case.fix)  cc("tmp1")
-    xmlfile <- xmlParse(file = "tmp1")
-    unlink("tmp1")
+    str<- tempfile(pattern = "file", tmpdir = tempdir())
+    (download.file(url,destfile=str,method="wininet"))
+    
+    xmlfile <- xmlParse(file = str)
+    unlink(str)
   } else if(dataLocation=="file"){
     cc(url)
     message("trying file",url,"\nContent type  'text/xml'\n")
@@ -46,6 +46,13 @@ ld <- function(url,dataLocation,case.fix=TRUE){
     }
   }
   return(xmlfile)
+}
+
+# Replace underscores in file - assuming underscores only in element names
+us <- function(file){
+  str <- readLines(file)
+  y <- gsub(x=str,pattern = "[_]",replacement ="",perl = TRUE)
+  writeLines(y,file)
 }
 
 cc <- function(file){
@@ -90,9 +97,9 @@ cc <- function(file){
 # Load WFS locations from CSV
 
 ## Load csv with WFS addresses
-urls2017      <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/CouncilWFS.csv"
-urls          <- read.csv(urls2017,stringsAsFactors=FALSE)
-urls$Agency[urls$Agency=="TDC"] <- "xTDC"   ## Commenting out Tasman DC due to Hilltop Server issues
+urls2018      <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/CouncilWFS.csv"
+urls          <- read.csv(urls2018,stringsAsFactors=FALSE)
+#urls$Agency[urls$Agency=="TDC"] <- "xTDC"   ## Commenting out Tasman DC due to Hilltop Server issues
 #urls2016      <- "//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/CouncilWFS.csv"
 #urls          <- read.csv(urls2016,stringsAsFactors=FALSE)
 stopGapNames  <- read.csv("agencyRegion.csv",stringsAsFactors=FALSE)
@@ -125,22 +132,37 @@ sink(logfile)
 
 
 for(h in 1:length(urls$URL)){
-
   if(grepl("^x", urls$Agency[h])){
     next
   } 
   if(!nzchar(urls$URL[h])){  ## returns false if the URL string is missing
     next
   }
-  #if(h==12){
-  #  next()
-  #}
+  if(h==3){
+    next()
+  }
 
-  xmldata<-ld(urls$URL[h],urls$Source[h])
+  # Fixing case issue with attribute names with WRC
+  if(urls$Agency[h]=="WRC"){
+    str<- tempfile(pattern = "file", tmpdir = tempdir())
+    (download.file(urls$URL[h],destfile=str,method="wininet"))
+    cc(str)
+    xmldata <- xmlParse(file = str)
+    unlink(str)
+  } else if(urls$Agency[h]=="ECAN") {
+  # Fixing field name issue with Ecan
+    str<- tempfile(pattern = "file", tmpdir = tempdir())
+    (download.file(urls$URL[h],destfile=str,method="wininet"))
+    us(str)
+    xmldata <- xmlParse(file = str)
+    unlink(str)
+
+  } else {
+    #load up every other end point without needing to fix case in the file.
+    xmldata<-ld(urls$URL[h],urls$Source[h])
+  }
   
   if(urls$Source[h]=="file" & grepl("csv$",urls$URL[h])){
-    # Waikato RC data currently in CSV as at 7-Sep-20116
-    # Load CSV and append it to siteTable dataframe
     cc(urls$URL[h])
     tmp <- read.csv(urls$URL[h],stringsAsFactors=FALSE,strip.white = TRUE,sep=",")
     
@@ -159,11 +181,24 @@ for(h in 1:length(urls$URL)){
   } else {
     ### Determine the values used in the [emar:SWQuality] element
     swq<-unique(sapply(getNodeSet(doc=xmldata, path="//emar:MonitoringSiteReferenceData/emar:SWQuality"), xmlValue))
+    ns <- "emar:"
+    ## if emar namespace does not occur before TypeName in element,then try without namespace
+    ## Hilltop Server v1.80 excludes name space from element with TypeName tag
+    if(length(swq)==0){
+      swq<-unique(sapply(getNodeSet(doc=xmldata, path="//MonitoringSiteReferenceData/emar:SWQuality"), xmlValue))
+      ns <- ""
+    }
     # since it appears that the possible values for Yes,No, True, False, Y, N, T,F, true, false, yes, no all have the
     # sample alphabetic order, Y, Yes, y, yes, True, true, T, t are always going to be item 2 in this character vector.
     # Handy.
     # Enforcing order in swq
     swq<-swq[order(swq,na.last = TRUE)]
+    
+    # Resolving case issue of values for SWQuality element returned from Ecan
+    if(identical(swq,c("NO","Yes","YES"))){
+      swq <- c("NO","YES")
+    }
+    
     
     if(length(swq)==2){
       module <- paste("[emar:SWQuality='",swq[2],"']",sep="")
@@ -177,7 +212,7 @@ for(h in 1:length(urls$URL)){
   
     # Determine number of records in a wfs with module before attempting to extract all the necessary columns needed
     if(length(sapply(getNodeSet(doc=xmldata, 
-                          path=paste("//emar:MonitoringSiteReferenceData",module,"/emar:",vars[1],sep="")), xmlValue))==0){
+                          path=paste("//",ns,"MonitoringSiteReferenceData",module,"/emar:",vars[1],sep="")), xmlValue))==0){
       cat(urls$Agency[h],"has no records for <emar:SWQuality>\n")
   
     } else {
@@ -193,7 +228,7 @@ for(h in 1:length(urls$URL)){
         if(i==1){
           # for the first URL
           a<- sapply(getNodeSet(doc=xmldata, 
-                                path=paste("//emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
+                                path=paste("//emar:LawaSiteID/../../",ns,"MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
           cat(vars[i],":\t",length(a),"\n")
           #Cleaning var[i] to remove any leading and trailing spaces
           trimws(a)
@@ -202,7 +237,7 @@ for(h in 1:length(urls$URL)){
           # for all subsequent URL's
          
           b<- sapply(getNodeSet(doc=xmldata, 
-                                path=paste("//emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
+                                path=paste("//emar:LawaSiteID/../../",ns,"MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
           cat(vars[i],":\t",length(b),"\n")
           if(length(b)==0){
             if(vars[i]=="Region"){
@@ -224,15 +259,15 @@ for(h in 1:length(urls$URL)){
       a <- as.data.frame(a,stringsAsFactors=FALSE)
       ### grab the latitude and longitude values (WFS version must be 1.1.0)
       latlong    <- sapply(getNodeSet(doc=xmldata, 
-                            path=paste("//gml:Point[../../../emar:MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
+                            path=paste("//gml:Point[../../../",ns,"MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
       
       latlong    <- sapply(getNodeSet(doc=xmldata, 
-                           path=paste("//gml:Point[../../emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
+                           path=paste("//gml:Point[../../emar:LawaSiteID/../../",ns,"MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
       
       
       llSiteName <- sapply(getNodeSet(doc=xmldata, 
                             path=paste("//gml:Point[../../emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"]",
-                                       "/../../../emar:MonitoringSiteReferenceData/emar:CouncilSiteID",sep="")), xmlValue)
+                                       "/../../../",ns,"MonitoringSiteReferenceData/emar:CouncilSiteID",sep="")), xmlValue)
       latlong <- simplify2array(strsplit(latlong," "))
   
       rm(b,xmldata)
@@ -317,24 +352,26 @@ siteTable$SWQFrequencyLast5 <- pseudo.titlecase(siteTable$SWQFrequencyLast5 )
 # 
 # rm(boprc,n,siteAltLand)
 
+#Load NIWA Site data from csv
+niwaSites <- read.csv("\\\\file\\herman\\R\\OA\\08\\02\\2018\\Water Quality\\0.AsSupplied\\NIWA\\SiteList.csv",stringsAsFactors=FALSE)
+niwaSites <- niwaSites[,c(1:53)]
+  
 
 #Editing the NIWA values as landuse and altitude values are missing
-NIWA <- siteTable[siteTable$Agency=="NIWA",]
-siteAltLand <- read.csv("//file/herman/r/oa/08/02/2017/Water Quality/0.AsSupplied/NIWA/siteAltLand.txt")
-NIWA <- merge(NIWA,siteAltLand,by.x="LawaSiteID",by.y="LAWAID",all.x=TRUE)
-NIWA$SWQLanduse  <- NIWA$LanduseGroup
-NIWA$SWQAltitude <- NIWA$AltitudeGroup
+#NIWA <- siteTable[siteTable$Agency=="NIWA",]
+siteAltLand <- read.csv("//file/herman/r/oa/08/02/2018/Water Quality/0.AsSupplied/NIWA/siteAltLand.txt")
+NIWA <- merge(niwaSites,siteAltLand,by.x="LawaSiteID",by.y="LAWAID",all.x=TRUE)
 
-NIWA <- NIWA[,c(1:12)]
+# selecting fields in NIWA dataframe that match those in the siteTable dataframe
+NIWA <- NIWA[,c(2,6,1,13,55,56,15,16,53,52,4,3)]
+names(NIWA) <- names(siteTable)
 
-n <- names(NIWA)
-n[9] <- "Region"
-names(NIWA) <- n
 
-siteTable <- siteTable[siteTable$Agency!="NIWA",]
+
+#siteTable <- siteTable[siteTable$Agency!="NIWA",]
 siteTable <- rbind(siteTable,NIWA)
 
-rm(NIWA,n,siteAltLand)
+rm(NIWA,niwaSites,siteAltLand)
 
 ## Changing BOP Site names that use extended characters
 ## Waiōtahe at Toone Rd             LAWA-100395   Waiotahe at Toone Rd 
@@ -358,7 +395,7 @@ siteTable$SiteID[siteTable$LawaSiteID=="EBOP-00038"] <- "Waitahanui at Otamaraka
 
 ## Swapping coordinate values for Agency=Environment Canterbury Regional Council, Christchurch
 
-agencies <- c("Environment Canterbury Regional Council","Christchurch")
+agencies <- c("Environment Canterbury","Christchurch","TRC")
 
 for(a in 1:length(agencies)){
   lon <- siteTable$Lat[siteTable$Agency==agencies[a]]
@@ -374,6 +411,14 @@ for(a in 1:length(agencies)){
 
 siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
 siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
+
+## Correcting variations in Region names
+
+siteTable$Region[siteTable$Region=="BayOfPlenty"]   <- "Bay of Plenty"
+siteTable$Region[siteTable$Region=="WaikatoRegion"] <- "Waikato"
+siteTable$Region[siteTable$Region=="HawkesBay"]     <- "Hawkes Bay"
+siteTable$Region[siteTable$Region=="WestCoast"]     <- "West Coast"
+
 
 ## Output for next script
 write.csv(x = siteTable,file = "LAWA_Site_Table.csv")

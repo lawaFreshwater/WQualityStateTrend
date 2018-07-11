@@ -16,7 +16,7 @@ ANALYSIS<-"Intersect WFS"
 # Set working directory
 
 od     <- getwd()
-wd     <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\R\\lawa_state"
+wd     <- "\\\\file\\herman\\R\\OA\\08\\02\\2018\\Water Quality\\R\\lawa_state"
 setwd(wd)
 
 #/* -===Include required function libraries===- */ 
@@ -69,7 +69,7 @@ coordinates(pts) <- ~ Long + Lat
 # Load catchment polys as SpatialPolygonsDataFrame
 # LAWA_CATCHMENTS_WGS84 - original - replaced by the eIDI FW catchment file
 
-polys <- readOGR(dsn="\\\\file\\herman\\R\\OA\\08\\02\\Mapping\\data\\2017\\eIDI-FW-Catchments.shp",
+polys <- readOGR(dsn="\\\\file\\herman\\R\\OA\\08\\02\\Mapping\\data\\2018\\eIDI-FW-Catchments.shp",
                  layer="eIDI-FW-Catchments",p4s = NULL,
                  stringsAsFactors = FALSE)
 
@@ -126,4 +126,6 @@ cat(sum(chk),": site names includuing '&' character")
 write.csv(pip.data,"LAWA_Site_Table1.csv")
 #write.csv(pip.data,"LAWA_Site_Table.csv")
 
+siteTableMerge <- merge(siteTable,pip.data,by="LawaSiteID",all.x=TRUE)
+write.csv(siteTableMerge,"reviewWFS-SiteList.csv")
 
