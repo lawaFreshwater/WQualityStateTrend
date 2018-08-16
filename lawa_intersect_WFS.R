@@ -152,7 +152,7 @@ write.csv(pip.data,paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",for
 
 siteTableMerge <- merge(siteTable,pip.data,by="LawaSiteID",all.x=TRUE)
 write.csv(siteTableMerge,
-          paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"reviewWFS-SiteList.csv"))
+          paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/reviewWFS-SiteList.csv"))
 
 
 

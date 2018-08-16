@@ -1,0 +1,34 @@
+Council,Value,Type
+TRC,Patea at Skinner Rd,Site
+TRC,Mangaehu at Bridge,Site
+TRC,Waingongoro at Eltham Rd,Site
+TRC,Waingongoro at SH45,Site
+TRC,Stony at Mangatete Bridge,Site
+TRC,Waiwhakaiho at Egmont Village,Site
+TRC,Mangaoraka at Corbett Rd,Site
+TRC,Waitara at Bertrand Rd,Site
+TRC,WKH000500,Site
+TRC,WGG000500,Site
+TRC,WGG000900,Site
+TRC,STY000300,Site
+TRC,PNH000900,Site
+TRC,PAT000200,Site
+TRC,PAT000360,Site
+TRC,PNH000200,Site
+TRC,MKW000300,Site
+TRC,MRK000420,Site
+TRC,MGH000950,Site
+TRC,BDISC,Measurement
+TRC,DIN,Measurement
+TRC,DRP,Measurement
+TRC,ECOL,Measurement
+TRC,NH4,Measurement
+TRC,NNN,Measurement
+TRC,NO2,Measurement
+TRC,NO3,Measurement
+TRC,PH,Measurement
+TRC,TKN,Measurement
+TRC,TN,Measurement
+TRC,TP,Measurement
+TRC,TURBY,Measurement
+TRC,NH3,Measurement
