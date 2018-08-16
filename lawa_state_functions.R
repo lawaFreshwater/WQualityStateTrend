@@ -83,13 +83,13 @@ require(EnvStats)   # Library from EPA with seasonal kendall
 # Review results
 
 SiteTable <- function(databasePathFileName,sqlID){
-
+  
   # Creating connection to hilltop database containing lawa site table
   # Creates a lockfile on the access mdb   
   # conn <- odbcConnectAccess("g:/projects/LAWNZ/RC_DATA/LAWNZ_WQ.mdb")
-
+  
   #databasePathFileName<-"//ares/waterquality/LAWA/2013/hilltop.mdb"
-
+  
   
   # If you run a 64bit Windows env, you may need to install the
   # Access Database engine in order to get this to work
@@ -104,7 +104,7 @@ SiteTable <- function(databasePathFileName,sqlID){
            "SELECT [NationalSiteTable].* FROM [NationalSiteTable]",
            "SELECT [NationalSiteView].* FROM [NationalSiteView] WHERE [NationalSiteView].[UsedInLAWA] = TRUE AND [NationalSiteView].[Site_Type] like '%SoE%'")
   
-
+  
   #sqlID=3
   # ' // Creating query and extracting dataset to LAWNZ data.frame
   LAWASites <- sqlQuery(conn, sql[sqlID])
@@ -191,7 +191,7 @@ requestData <- function(vendor,tss_url,request){
 }
 
 SiteList <- function(xmlsdata){
-   
+  
   # GETTING SITES WITH LOCATION DATA ONLY
   #site.attr<-getNodeSet(xmlsdata,"//Latitude/../@Name")
   #site.list<-sapply(site.attr, as.character)
@@ -211,19 +211,19 @@ MeasurementList <- function(xmlmdata,requestType){
     
     DateTime <- sapply(getNodeSet(doc=xmlmdata, path="//wml2:point/wml2:MeasurementTVP/wml2:time"), xmlValue)
     value <- as.numeric(sapply(getNodeSet(doc=xmlmdata, path="//wml2:point/wml2:MeasurementTVP/wml2:value"), xmlValue))
-  
-
-    } else if(requestType=="Hilltop"){
+    
+    
+  } else if(requestType=="Hilltop"){
     
     #DateTime <- sapply(getNodeSet(doc=xmlmdata, path="//Data/E/T"), xmlValue)
     #value <- as.numeric(sapply(getNodeSet(doc=xmlmdata, path="//Data/E/Value"), xmlValue))
     #site.attr<-getNodeSet(doc=xmlmdata,path="//T/ancestor::Measurement/@SiteName")
     #site.list<-sapply(site.attr, as.character)
-      
+    
     a<-getNodeSet(xmlmdata, path="//Measurement")
     
     for(i in 1:length(a)){
-
+      
       myPath<-paste("//Measurement[",i,"]",sep="")
       c<-getNodeSet(xmlmdata, path=myPath)
       s<-sapply(c,function(el) xmlGetAttr(el, "SiteName"))
@@ -254,11 +254,11 @@ MeasurementList <- function(xmlmdata,requestType){
         myPath<-paste("//Measurement[",i,"]/Data/E/Parameter[@Name='Method']/../T",sep="")
         h<-getNodeSet(xmlmdata, path=myPath)
         k<-xmlSApply(h, xmlValue)
-
+        
         tmp <- data.frame(as.POSIXct(strptime(k,format="%Y-%m-%dT%H:%M:%S")), g,stringsAsFactors=FALSE)
         names(tmp)<-c("Date","Method")
       }
-          
+      
       if(i==1){
         df<-data.frame(s,as.POSIXct(strptime(d,format="%Y-%m-%dT%H:%M:%S")),v, stringsAsFactors=TRUE)
         names(df) <- c("Site","Date","Value")
@@ -283,7 +283,9 @@ MeasurementList <- function(xmlmdata,requestType){
 qualifiedValues <- function(df){
   
   df$qualifier <- substr(df$Value,start=1,stop=1)
-  df$v <-ifelse(df$qualifier=="<",as.numeric(as.character(substr(df$Value,2,length(df$Value)-1)))/2,as.numeric(as.character(df$Value)))
+  df$v <-ifelse(df$qualifier=="<",
+                as.numeric(as.character(substr(df$Value,2,length(df$Value)-1)))/2,
+                as.numeric(as.character(df$Value)))
   df$value <- df$Value
   df$Value <- df$v
   df$v <- NULL
@@ -291,7 +293,7 @@ qualifiedValues <- function(df){
   df$value <- NULL
   return(df)
   
-
+  
   
 }
 
@@ -300,7 +302,7 @@ qualifiedValues2 <- function(df){
   df$i1Values <- df$Value  # If no reason to apply ROS, just return values
   df$i1Values[df$CenType=="Left"] <- (df$Value[df$CenType=="Left"])/2
   return(df)
-
+  
 }
 
 StateAnalysis <- function(df,type,level){
@@ -325,9 +327,9 @@ StateAnalysis <- function(df,type,level){
   
   # ' // s = sitemedians
   dfs <- summaryBy(Value~SiteName+LAWAID+parameter,
-                 id=~LanduseGroup+AltitudeGroup+Catchment+Region+Frequency,
-                 data=df, 
-                 FUN=c(quantile), probs=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
+                   id=~LanduseGroup+AltitudeGroup+Catchment+Region+Frequency,
+                   data=df, 
+                   FUN=c(quantile), probs=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
   
   # ==============================================================
   # Test number of samples by Site/parameter
@@ -346,15 +348,12 @@ StateAnalysis <- function(df,type,level){
   # Both function calls return data.frames of the same length with records in the same order.
   # As a consequence, the Count field can be joined directly to the data.frame with medians
   # with bothering with a merge().
-  dfs_count <- summaryBy(Value~SiteName+LAWAID+parameter,
-                         id=~LanduseGroup+AltitudeGroup+Catchment+Region+Frequency,
-                         data=wqdata, 
-                         FUN=c(length))
+  dfs_count <- summaryBy(FUN=c(length),data=df,
+                         Value~SiteName+LAWAID+parameter,
+                         id=~LanduseGroup+AltitudeGroup+Catchment+Region+Frequency)
   
   # Renaming Value.Length field
-  c<-names(dfs_count)
-  c[4]<-"Count"
-  names(dfs_count) <- c
+  names(dfs_count)[names(dfs_count)=='Value.length']<-"Count"
   
   dfs$Count <- dfs_count$Count
   rm(dfs_count)
@@ -370,20 +369,17 @@ StateAnalysis <- function(df,type,level){
   # ========================
   # Filtering data.frame to remove rows meeting exclusion criteria
   dfs<-dfs[dfs$Exclude==FALSE,1:9]
-
   # ==============================================================
-  
-  
   
   if(type=="Site"){
     if(level=="LandUseAltitude"){
-    s <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+SiteName+LAWAID+parameter,  
-                    data=dfs, 
-                    FUN=c(quantile), type=5, na.rm=TRUE, keep.name=TRUE)
-    t <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+SiteName+LAWAID+parameter,  
-                   data=dfs, 
-                   FUN=c(length), keep.name=TRUE)
-    s$Value<-t$Value
+      s <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+SiteName+LAWAID+parameter,  
+                     data=dfs, 
+                     FUN=c(quantile), type=5, na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+SiteName+LAWAID+parameter,  
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
     }
     
     s$scope <- type
@@ -391,9 +387,9 @@ StateAnalysis <- function(df,type,level){
   } else if(type=="Catchment"){
     if(level=="LandUseAltitude"){
       s <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+parameter,
-                    id=~SiteName+LAWAID,
-                    data=dfs, 
-                    FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+                     id=~SiteName+LAWAID,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
       t <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+Catchment+parameter,
                      id=~SiteName+LAWAID,
                      data=dfs, 
@@ -444,22 +440,22 @@ StateAnalysis <- function(df,type,level){
       s$SiteName <- "All"
       s$LAWAID <- "All"      
     }
-  s$scope <- type
+    s$scope <- type
     
   } else if(type=="Region"){
     if(level=="LandUseAltitude"){
-    s <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+parameter,  
-                   id=~Catchment+SiteName+LAWAID,
-                   data=dfs, 
-                   FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
-    t <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+parameter,  
-                   id=~Catchment+SiteName+LAWAID,
-                   data=dfs, 
-                   FUN=c(length), keep.name=TRUE)
-    s$Value<-t$Value
-    s$SiteName <- "All"
-    s$LAWAID <- "All"
-    s$Catchment <- "All"
+      s <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+parameter,  
+                     id=~Catchment+SiteName+LAWAID,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~AltitudeGroup+LanduseGroup+Region+parameter,  
+                     id=~Catchment+SiteName+LAWAID,
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
+      s$SiteName <- "All"
+      s$LAWAID <- "All"
+      s$Catchment <- "All"
     } else if(level=="LandUse"){
       s <- summaryBy(Value~LanduseGroup+Region+parameter,  
                      id=~Catchment+SiteName+LAWAID+AltitudeGroup,
@@ -508,70 +504,70 @@ StateAnalysis <- function(df,type,level){
     s$scope <- type
     
   } else if(type=="NZ"){
-      if(level=="LandUseAltitude"){
-        s <- summaryBy(Value~AltitudeGroup+LanduseGroup+parameter,  
-                       id=~Region+Catchment+SiteName+LAWAID,
-                       data=dfs, 
-                       FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
-        t <- summaryBy(Value~AltitudeGroup+LanduseGroup+parameter,  
-                       id=~Region+Catchment+SiteName+LAWAID,
-                       data=dfs, 
-                       FUN=c(length), keep.name=TRUE)
-        s$Value<-t$Value
-        s$SiteName <- "All"
-        s$LAWAID <- "All"
-        s$Catchment <- "All"
-        s$Region <-"All"
-  
-        } else if(level=="LandUse"){
-        s <- summaryBy(Value~LanduseGroup+parameter,  
-                       id=~Region+Catchment+SiteName+LAWAID+AltitudeGroup,
-                       data=dfs, 
-                       FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
-        t <- summaryBy(Value~LanduseGroup+parameter,  
-                       id=~Region+Catchment+SiteName+LAWAID+AltitudeGroup,
-                       data=dfs, 
-                       FUN=c(length), keep.name=TRUE)
-        s$Value<-t$Value
-        s$AltitudeGroup <- "All"
-        s$SiteName <- "All"
-        s$LAWAID <- "All"
-        s$Catchment <- "All"
-        s$Region <-"All"
-        
-      } else if(level=="Altitude"){
-          s <- summaryBy(Value~AltitudeGroup+parameter,  
-                         id=~Region+Catchment+SiteName+LAWAID+LanduseGroup,
-                         data=dfs, 
-                         FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
-          t <- summaryBy(Value~AltitudeGroup+parameter,  
-                         id=~Region+Catchment+SiteName+LAWAID+LanduseGroup,
-                         data=dfs, 
-                         FUN=c(length), keep.name=TRUE)
-          s$Value<-t$Value
-          s$LanduseGroup <- "All"
-          s$SiteName <- "All"
-          s$LAWAID <- "All"
-          s$Catchment <- "All"
-          s$Region <-"All"
-          
-      } else if(level=="None"){
-          s <- summaryBy(Value~parameter,  
-                         id=~Region+Catchment+SiteName+LAWAID+LanduseGroup+AltitudeGroup,
-                         data=dfs, 
-                         FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
-          t <- summaryBy(Value~parameter,  
-                         id=~Region+Catchment+SiteName+LAWAID+LanduseGroup+AltitudeGroup,
-                         data=dfs, 
-                         FUN=c(length), keep.name=TRUE)
-          s$Value<-t$Value
-          s$LanduseGroup <- "All"
-          s$AltitudeGroup <- "All"
-          s$SiteName <- "All"
-          s$LAWAID <- "All"
-          s$Catchment <- "All"
-          s$Region <-"All"
-      }
+    if(level=="LandUseAltitude"){
+      s <- summaryBy(Value~AltitudeGroup+LanduseGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~AltitudeGroup+LanduseGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID,
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
+      s$SiteName <- "All"
+      s$LAWAID <- "All"
+      s$Catchment <- "All"
+      s$Region <-"All"
+      
+    } else if(level=="LandUse"){
+      s <- summaryBy(Value~LanduseGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+AltitudeGroup,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~LanduseGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+AltitudeGroup,
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
+      s$AltitudeGroup <- "All"
+      s$SiteName <- "All"
+      s$LAWAID <- "All"
+      s$Catchment <- "All"
+      s$Region <-"All"
+      
+    } else if(level=="Altitude"){
+      s <- summaryBy(Value~AltitudeGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+LanduseGroup,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~AltitudeGroup+parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+LanduseGroup,
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
+      s$LanduseGroup <- "All"
+      s$SiteName <- "All"
+      s$LAWAID <- "All"
+      s$Catchment <- "All"
+      s$Region <-"All"
+      
+    } else if(level=="None"){
+      s <- summaryBy(Value~parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+LanduseGroup+AltitudeGroup,
+                     data=dfs, 
+                     FUN=c(quantile),na.rm=TRUE, keep.name=TRUE)
+      t <- summaryBy(Value~parameter,  
+                     id=~Region+Catchment+SiteName+LAWAID+LanduseGroup+AltitudeGroup,
+                     data=dfs, 
+                     FUN=c(length), keep.name=TRUE)
+      s$Value<-t$Value
+      s$LanduseGroup <- "All"
+      s$AltitudeGroup <- "All"
+      s$SiteName <- "All"
+      s$LAWAID <- "All"
+      s$Catchment <- "All"
+      s$Region <-"All"
+    }
     s$scope <- type
     
   }
@@ -580,6 +576,7 @@ StateAnalysis <- function(df,type,level){
 }
 
 StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
+  
   # df <- sa
   # scope <- scope[i]
   # altitude <- ""
@@ -609,9 +606,9 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
   # ' //        Each rural site compared to rural National medians
   # ' //        Each forest site compared to forest National medians
   # ' //        Each urban site compared to urban National medians
-
+  
   # ' // Then repeat for catchment and region.
-
+  
   #  scope = "NZ", "Region", "Catchment", "Site"
   
   #  scope = "NZ" is used for comparison, so only Region, Catchment and Site feed through.
@@ -624,58 +621,84 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
   
   
   # -=== WQ PARAMETERS ===-
-    for(i in 1:length(wqparam)){
-  
-      # set a comparison enum_type 1,2,3,4 - make this a function argument to specify which
-      # comparison to undertake.
+  for(i in 1:length(wqparam)){
+    
+    # set a comparison enum_type 1,2,3,4 - make this a function argument to specify which
+    # comparison to undertake.
+    
+    # Region|All, Catchment|All, Site|All 
+    if(comparison==1){
+      # df_scope represents the results for a specific scope : Site, Catchment, Region
+      df_scope           <- subset(df, tolower(Scope)==tolower(scope) &
+                                     tolower(Parameter)==tolower(wqparam[i]))
+      df_scope$StateGroup<- paste(scope,"All",sep="|")
+      # df_baseline represents the dataset against which site results will be compared and
+      # assigned a state score  
+      df_baseline <- subset(df, tolower(AltitudeGroup)=="all" &
+                              tolower(LanduseGroup)=="all" &
+                              tolower(Scope)=="nz" &
+                              tolower(Parameter)==tolower(wqparam[i]))  
       
-      # Region|All, Catchment|All, Site|All 
-      if(comparison==1){
-        # df_scope represents the results for a specific scope : Site, Catchment, Region
-        df_scope           <- subset(df, Scope==scope & Parameter==wqparam[i])
-        df_scope$StateGroup<- paste(scope,"All",sep="|")
-        # df_baseline represents the dataset against which site results will be compared and
-        # assigned a state score  
-        df_baseline <- subset(df, AltitudeGroup=="All" & LanduseGroup=="All" & Scope=="NZ" & Parameter==wqparam[i])  
-
       # Region|Upland, Catchment|Upland, Site|Upland     Region|Lowland, Catchment|Lowland, Site|Lowland
-      } else if(comparison==2){          
-        df_scope           <- subset(df, Scope==scope & AltitudeGroup==altitude & Parameter==wqparam[i])
-        df_scope$StateGroup<- paste(scope,altitude,sep="|")
-        # df_baseline represents the dataset against which site results will be compared and
-        # assigned a state score  
-        df_baseline <- subset(df, AltitudeGroup==altitude & LanduseGroup=="All" & Scope=="NZ" & Parameter==wqparam[i])  
+    } else if(comparison==2){          
+      df_scope           <- subset(df, tolower(Scope)==tolower(scope) &
+                                     tolower(AltitudeGroup)==tolower(altitude) &
+                                     tolower(Parameter)==tolower(wqparam[i]))
+      df_scope$StateGroup<- paste(scope,altitude,sep="|")
+      # df_baseline represents the dataset against which site results will be compared and
+      # assigned a state score  
+      df_baseline <- subset(df, tolower(AltitudeGroup)==tolower(altitude) &
+                              tolower(LanduseGroup)=="all" &
+                              tolower(Scope)=="nz" &
+                              tolower(Parameter)==tolower(wqparam[i]))  
       
       # Region|Forest, Catchment|Forest, Site|Forest     Region|Rural, Catchment|Rural, Site|Rural     Region|Urban, Catchment|Urban, Site|Urban
-      } else if(comparison==3){          
-        df_scope           <- subset(df, Scope==scope & LanduseGroup==landuse & Parameter==wqparam[i])
-        df_scope$StateGroup<- paste(scope,landuse,sep="|")
+    } else if(comparison==3){          
+      df_scope           <- subset(df, tolower(Scope)==scope &
+                                     tolower(LanduseGroup)==landuse &
+                                     tolower(Parameter)==tolower(wqparam[i]))
+      df_scope$StateGroup<- paste(scope,landuse,sep="|")
+      # df_baseline represents the dataset against which site results will be compared and
+      # assigned a state score  
+      df_baseline <- subset(df, tolower(AltitudeGroup)=="all" &
+                              tolower(LanduseGroup)==landuse &
+                              tolower(Scope)=="nz" &
+                              tolower(Parameter)==tolower(wqparam[i]))  
+    }
+    # Region|Upland|Forest, Catchment|Upland|Forest, Site|Upland|Forest     Region|Upland|Rural, Catchment|Upland|Rural, Site|Upland|Rural     Region|Upland|Urban, Catchment|Upland|Urban, Site|Upland|Urban
+    # Region|Lowland|Forest, Catchment|Lowland|Forest, Site|Lowland|Forest     Region|Lowland|Rural, Catchment|Lowland|Rural, Site|Lowland|Rural     Region|Lowland|Urban, Catchment|Lowland|Urban, Site|Lowland|Urban 
+    else if(comparison==4){
+      df_scope           <- subset(df, tolower(Scope)==scope &
+                                     tolower(AltitudeGroup)==altitude &
+                                     tolower(LanduseGroup)==landuse &
+                                     tolower(Parameter)==tolower(wqparam[i]))
+      if(length(df_scope[,1])!=0){ # Testing for zero records returned - allows for zero Upland - Urban combination during testing.
+        df_scope$StateGroup<- paste(scope,altitude,landuse,sep="|")
         # df_baseline represents the dataset against which site results will be compared and
         # assigned a state score  
-        df_baseline <- subset(df, AltitudeGroup=="All" & LanduseGroup==landuse & Scope=="NZ" & Parameter==wqparam[i])  
+        df_baseline <- subset(df, tolower(AltitudeGroup)==altitude &
+                                tolower(LanduseGroup)==landuse &
+                                tolower(Scope)=="nz" &
+                                tolower(Parameter)==tolower(wqparam[i]))
+      } 
+    }          
+    
+    if(exists('newstate')){
+      rm(newstate)          
+    }
+    if(length(df_scope[,1])!=0){
+      newstate<-calcScore(df_scope,df_baseline,wqparam[i])
+    }
+    if(!exists('state')){
+      if(exists(newstate)){
+        state=newstate
       }
-        # Region|Upland|Forest, Catchment|Upland|Forest, Site|Upland|Forest     Region|Upland|Rural, Catchment|Upland|Rural, Site|Upland|Rural     Region|Upland|Urban, Catchment|Upland|Urban, Site|Upland|Urban
-        # Region|Lowland|Forest, Catchment|Lowland|Forest, Site|Lowland|Forest     Region|Lowland|Rural, Catchment|Lowland|Rural, Site|Lowland|Rural     Region|Lowland|Urban, Catchment|Lowland|Urban, Site|Lowland|Urban 
-        else if(comparison==4){          
-        df_scope           <- subset(df, Scope==scope & AltitudeGroup==altitude & LanduseGroup==landuse & Parameter==wqparam[i])
-        if(length(df_scope[,1])!=0){ # Testing for zero records returned - allows for zero Upland - Urban combination during testing.
-          df_scope$StateGroup<- paste(scope,altitude,landuse,sep="|")
-          # df_baseline represents the dataset against which site results will be compared and
-          # assigned a state score  
-          df_baseline <- subset(df, AltitudeGroup==altitude & LanduseGroup==landuse & Scope=="NZ" & Parameter==wqparam[i])
-        } 
-      }          
-          
-          
-      if(i==1){
-        state<-calcScore(df_scope,df_baseline,wqparam[i])
-      } else {
+    } else {
+      if(exists('newstate')){
         state<-rbind(state, calcScore(df_scope,df_baseline,wqparam[i]))
       }
-
     }
-    
-    
+  }
   return(state)
 }
 
@@ -684,37 +707,37 @@ calcScore <- function(df1,df2,wqparam){
   df1 <- na.omit(df1)
   df2 <- na.omit(df2)
   for(i in 1:length(df1[,1]))
-  if(wqparam=="BDISC"){
-    if(df1$Q50[i]<=df2$Q25){
-      df1$LAWAState[i] <- 4
-    } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
-      df1$LAWAState[i] <- 3
-    } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
-      df1$LAWAState[i] <- 2
-    } else if(df1$Q50[i]>=df2$Q75){
-      df1$LAWAState[i] <- 1
+    if(wqparam=="BDISC"){
+      if(df1$Q50[i]<=df2$Q25){
+        df1$LAWAState[i] <- 4
+      } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
+        df1$LAWAState[i] <- 3
+      } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
+        df1$LAWAState[i] <- 2
+      } else if(df1$Q50[i]>=df2$Q75){
+        df1$LAWAState[i] <- 1
+      }
+    } else if(wqparam=="PH"){
+      if(df1$Q50[i]<=df2$Q25){
+        df1$LAWAState[i] <- 2
+      } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
+        df1$LAWAState[i] <- 1
+      } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
+        df1$LAWAState[i] <- 1
+      } else if(df1$Q50[i]>=df2$Q75){
+        df1$LAWAState[i] <- 2
+      }
+    } else {
+      if(df1$Q50[i]<=df2$Q25){
+        df1$LAWAState[i] <- 1
+      } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
+        df1$LAWAState[i] <- 2
+      } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
+        df1$LAWAState[i] <- 3
+      } else if(df1$Q50[i]>=df2$Q75){
+        df1$LAWAState[i] <- 4
+      }
     }
-  } else if(wqparam=="PH"){
-    if(df1$Q50[i]<=df2$Q25){
-      df1$LAWAState[i] <- 2
-    } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
-      df1$LAWAState[i] <- 1
-    } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
-      df1$LAWAState[i] <- 1
-    } else if(df1$Q50[i]>=df2$Q75){
-      df1$LAWAState[i] <- 2
-    }
-  } else {
-    if(df1$Q50[i]<=df2$Q25){
-      df1$LAWAState[i] <- 1
-    } else if(df1$Q50[i]>df2$Q25 & df1$Q50[i]<df2$Q50){
-      df1$LAWAState[i] <- 2
-    } else if(df1$Q50[i]>=df2$Q50 & df1$Q50[i]<df2$Q75){
-      df1$LAWAState[i] <- 3
-    } else if(df1$Q50[i]>=df2$Q75){
-      df1$LAWAState[i] <- 4
-    }
-  }
   return(df1)
 }
 
@@ -786,7 +809,7 @@ calcTrendScore.ci <- function(df1){
   df1$TrendScore[df1$Parameter=="BDISC"&df1$Sen.Slope<0] <- df1$TrendScore[df1$Parameter=="BDISC"&df1$Sen.Slope<0]*-1
   df1$TrendScore[df1$Parameter!="BDISC"&df1$Sen.Slope>0] <- df1$TrendScore[df1$Parameter!="BDISC"&df1$Sen.Slope>0]*-1
   return(df1)
-
+  
 }
 
 
@@ -848,32 +871,32 @@ PlotSites1 <- function(df,label){
   n <- 1
   plot = list()
   for(i in unique(df$LAWAID)){
-#    
+    #    
     dfSite<-subset(df, df$LAWAID==i)
     print(i)
     
-   
-#    par()              	# view current settings
-#    opar <- par()      	# make a copy of current settings
     
-#    par(mfrow=c(1,1))	 	# Specifying 1 graphs to plot on one page
-#    par(oma=c(2,2,2,2))	# outer margin area = 2 lines all the way around
-#    par(mar=c(4,4,0.5,0.5))	# reducing whitespace between multiple graphs
+    #    par()              	# view current settings
+    #    opar <- par()      	# make a copy of current settings
+    
+    #    par(mfrow=c(1,1))	 	# Specifying 1 graphs to plot on one page
+    #    par(oma=c(2,2,2,2))	# outer margin area = 2 lines all the way around
+    #    par(mar=c(4,4,0.5,0.5))	# reducing whitespace between multiple graphs
     
     # ' // Plotting a graph
-#    plot(df$Date, df$Value,
-#         xlab="",
-#         ylab=label,
-#         pch=20, col="black"
-#    )
-#    lines(df$Date, df$Value,
-#          type="l",	
-#          col="black"
-#    )
+    #    plot(df$Date, df$Value,
+    #         xlab="",
+    #         ylab=label,
+    #         pch=20, col="black"
+    #    )
+    #    lines(df$Date, df$Value,
+    #          type="l",	
+    #          col="black"
+    #    )
     
     
-#    dev.off()
-#    par(opar)          # restore original settings
+    #    dev.off()
+    #    par(opar)          # restore original settings
     
     plot[[n]] <- ggplot(dfSite, aes(Date,Value)) + geom_bar(stat="identity")
     if(n %% 8 == 0) {
@@ -891,12 +914,12 @@ PlotSites1 <- function(df,label){
     print(do.call(grid.arrange, plot))
   }
   dev.off()
-
+  
   return()
 }
 
 PlotSites <- function(df,label){
-      
+  
   # Create a simple timeseries plot for given time period
   p <- ggplot(df, aes(Date,Value)) + geom_bar(stat="identity")
   
@@ -957,9 +980,9 @@ sk <- function(lawa_ids,freqNum,freqText,df,rate,years,months){
   seasonalkendall$p.value <-as.numeric(as.character(seasonalkendall$p.value))
   
   seasonalkendall$freq<- freqText
-
+  
   return(seasonalkendall)
-
+  
 }
 
 seaKenLAWA <- function (x,stat) {
@@ -993,13 +1016,13 @@ seaKenLAWA <- function (x,stat) {
   names(miss) <- as.character(1:m)
   list(sen.slope = sen.slope, sen.slope.pct = sen.slope.pct, 
        p.value = p.value, miss = round(miss, 3))
-
+  
 }
 
 
 seaKenEPA <- function(x,stat="median"){
-# this function depends on the EnvStats package, and was
-# developed against EnvStats v2.3.0
+  # this function depends on the EnvStats package, and was
+  # developed against EnvStats v2.3.0
   
   test.data <- x
   Unadj.Conc <- test.data$Value
@@ -1018,7 +1041,7 @@ seaKenEPA <- function(x,stat="median"){
   sk.sen.slope.pct <- 100 * sk.sen.slope/abs(Ten.Yr.Medn)
   sk.slope.LCL90   <- as.numeric(test.output$interval$limits[1])  # Lower 90% confidence interval value
   sk.slope.UCL90   <- as.numeric(test.output$interval$limits[2])  # Upper 90% confidence interval value
-    
+  
   list(sen.slope     = sk.sen.slope, 
        sen.slope.pct = sk.sen.slope.pct, 
        p.value       = sk.p.value,
@@ -1026,14 +1049,14 @@ seaKenEPA <- function(x,stat="median"){
        sen.z.prob    = sk.sen.z.prob,
        slope.lcl90   = sk.slope.LCL90,
        slope.ucl90   = sk.slope.UCL90)
-
+  
 }
 
 
 
 
 prepareData <- function(value){
-    
+  
   # 1. Asterixes
   #Finding strings starting with "*"
   n<-grepl(pattern = "^\\*",x =  value,perl = TRUE)
@@ -1048,7 +1071,7 @@ prepareData <- function(value){
 }
 
 na_asterixes_val <- function(value){
-    
+  
   # 1. Asterixes
   #Finding strings starting with "*"
   n<-grepl(pattern = "^\\*",x =  value,perl = TRUE)
@@ -1066,8 +1089,8 @@ na_asterixes_val <- function(value){
 ## Function: Identify censored values
 ##     Assumption: all values with < or > symbols are non-zero
 flagCensoredDataDF <- function(df){
-   df$Censored<-FALSE
-   df$CenType<-"FALSE"
+  df$Censored<-FALSE
+  df$CenType<-"FALSE"
   # 1. Less thans
   #Finding strings starting with "<"
   n<-grepl(pattern = "^<",x =  df$Value,perl = TRUE)
@@ -1077,7 +1100,7 @@ flagCensoredDataDF <- function(df){
   
   df$Censored[n==TRUE] <- TRUE  
   df$CenType[n==TRUE] <- "Left"
-
+  
   # Remove < symbol
   df$Value[n==TRUE]<-gsub(pattern = "^<", replacement = "", x = df$Value[n==TRUE])
   
@@ -1253,15 +1276,15 @@ TrendCriteria <- function (first_20pct, last__20pct, num_samples, rate, years, m
   # Check Trend Criteria - Assess pass-fail for trends analysis
   
   pass<-TRUE
-#   if(first_20pct!= (months*monthMultiplier)){
-#     pass <- FALSE
-#   }
-#   
-#   if(last__20pct!=(months*monthMultiplier)){
-#     pass <- FALSE
-#   }
-
-    # if the data has passed the first two criteria for sufficient data at beginning and end of period
+  #   if(first_20pct!= (months*monthMultiplier)){
+  #     pass <- FALSE
+  #   }
+  #   
+  #   if(last__20pct!=(months*monthMultiplier)){
+  #     pass <- FALSE
+  #   }
+  
+  # if the data has passed the first two criteria for sufficient data at beginning and end of period
   # then check for sufficient number of samples
   if(pass){
     if(num_samples<rate*(years*months)){
@@ -1343,7 +1366,7 @@ resample <- function(x, ...) x[sample.int(length(x), ...)]
 # leftCensored <- function(df)
 # Impute.lower <-  function(x, forwardT="log", reverseT="exp") {     
 leftCensored <-  function(x, forwardT="log", reverseT="exp") {     
-    # this uses ROS to impute values for obs below multiple detection limits.  
+  # this uses ROS to impute values for obs below multiple detection limits.  
   # It is a modified version of code the function "Impute1()" supplied to Niall Broekhuizen <Niall.Broekhuizen@niwa.co.nz> by Bruce Dudley and originally written by 
   # Ton Snelder, with modifications by Olivia Burge
   # further modifications were made by Ton on 8/2/2017
@@ -1370,7 +1393,7 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
   x$converted_values <- x$Value
   # 
   x$dflag <- "ok"
-
+  
   x$dflag[x$Censored==TRUE & x$CenType=="Left"] <- "dl"
   x$dflag[x$Censored==TRUE & x$CenType=="Right"] <- "al"
   # ------------------------------------------------------------------------------------------------
@@ -1386,11 +1409,11 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
     #myData$ROS <- myData$converted_values
     myData$i1Values <- myData$converted_values
     #  } else if((sum(df$CenType=="Left")/nrow(df))>0.15){
-       #cat(" - Site excluded due to >15% left censored values\n")
+    #cat(" - Site excluded due to >15% left censored values\n")
   } else if((sum(myData$CenType=="Left")/nrow(myData))>0.30){
     #cat(" - Site excluded due to >30% left censored values\n")
     myData <- FALSE # FALSE is returned and this Site and Measurement are omitted from the dataset for later analysis.
-  
+    
   } else {
     
     #-------------------------
@@ -1543,7 +1566,7 @@ leftCensored <-  function(x, forwardT="log", reverseT="exp") {
 # rightCensored <- function(x)
 #Impute.upper <- function(x) {   
 rightCensored <- function(x) {   
-    # this function uses survreg (package::survival) to impute values for CLARITY observations that are ABOVE multiple detection limits
+  # this function uses survreg (package::survival) to impute values for CLARITY observations that are ABOVE multiple detection limits
   # this is the original function written by Ton Snelder
   #browser()
   #x<-tmp
@@ -1565,7 +1588,7 @@ rightCensored <- function(x) {
   
   myData <-  x
   myVar <-  as.character(myData$parameter[1])
-     
+  
   if(myVar != "BDISC") {     # if this is not Clarity ( NB  E. coli have "al" values but very low numbers - not enough to fit model.
     myData$i2Values <- myData$i1Values
     myData$i2Values[myData$dflag == "al"] <- 1.1*myData$i1Values[myData$dflag == "al"] # add 10% (catchs the E.coli greater thans).
@@ -1574,7 +1597,7 @@ rightCensored <- function(x) {
     if(nrow(myData) < 24 | (sum(myData$dflag == "al")/nrow(myData) < 0.05)) {
       myData$i2Values <- myData$i1Values
       myData$i2Values[myData$dflag == "al"] <- 1.1*myData$i1Values[myData$dflag == "al"] # add 10%
-     
+      
     } else {
       #print(as.character(myData$sIDnpID[1]))
       # these lines can be used to see what is happening.
@@ -1587,8 +1610,8 @@ rightCensored <- function(x) {
       #myMod <- survreg(Surv(converted_values, status) ~ 1, data = myData, dist="weibull") # using original observed non-censored
       SurvObj <- Surv(myData$converted_values, myData$status)
       myMod <- lawaSurvReg(SurvObj ~ 1, myData, weights, subset, na.action, dist = "weibull", 
-                                      init = NULL, scale = 0, control, parms = NULL, model = FALSE, 
-                                      x = FALSE, y = TRUE, robust = FALSE, score = FALSE)
+                           init = NULL, scale = 0, control, parms = NULL, model = FALSE, 
+                           x = FALSE, y = TRUE, robust = FALSE, score = FALSE)
       RScale <- as.numeric(exp(myMod$coefficients)) # this is the rweibull scale (see "survreg" function notes)
       RShape <- 1/myMod$scale   # this is the weibull shape
       #hist(myData$values[myData$dflag != "al"], main= "Example Distribution for site clarity myData")
@@ -1621,7 +1644,7 @@ rightCensored <- function(x) {
 # addJitter <- function(x, myValues="i2Values")
 #Impute.tied <-  function(x) {     
 addJitter <-  function(x) {     
-    # this uses jittering to break ties between measured values.  
+  # this uses jittering to break ties between measured values.  
   # It is loosely based upon code the function "Impute2()" supplied to me by Bruce Dudley and origianlly written by 
   # Ton Snelder, with modifications by Olivia Burge
   # function expects as imput a column of data named i2Values - which is the output from succesively applying "Impute.lower" & "Impute.upper"

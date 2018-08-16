@@ -10,79 +10,86 @@ message("-- A folder for todays date will be created and the imported files will
 #               1. Directories already exist
 #               1. R:/ drive not mapped to \\file\herman\R\OA\08\02
 
-try(shell(paste('mkdir "R:/2017/Water Quality/1.Imported/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = TRUE)
-try(shell(paste('mkdir "R:/2017/Water Quality/4.Analysis/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = TRUE)
+try(shell(paste('mkdir "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = F)
+# try(shell(paste('mkdir "H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/"',format(Sys.Date(),"%Y-%m-%d"),sep=""), translate=TRUE),silent = F)
 
 
 ## ----------------------------------------------------------------------------,
 ## Write Hilltop XML for Water Quality Data
 
 ## import destination will be in folder with todays date (created above)
-importDestination <- paste("//file/herman/R/OA/08/02/2017/Water Quality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/",sep="")
+importDestination <- paste("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/",sep="")
 
-# #Northland
- source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadNRC.R")
+
+#1 Auckland
+ # http://aklc.hydrotel.co.nz:8080/KiWIS/KiWIS
+ try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadAC.R"))
  rm("Data","df","df2","df2","sample","udf")
-# 
-# #Auckland
- source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadAC.R")
+
+#2 Bay of Plenty
+ # http://envdata.waikatoregion.govt.nz:8080/KiWIS/KiWIS
+ # try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadBOP.R"))
  rm("Data","df","df2","df2","sample","udf")
-# 
-# #Waikato
- source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadWRC.R")
+
+#3 Canterburyhttp://wateruse.ecan.govt.nz/wqlawa.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadECAN.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#4 Southland http://odp.es.govt.nz/WQ.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadES.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#5 Gisborne http://hilltop.gdc.govt.nz/data.hts?service=Hilltop"
+ try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadGDC.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#6 Greater Wellington http://hilltop.gw.govt.nz/Data.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadGW.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#7 Hawkes Bay http://data.hbrc.govt.nz/Envirodata/WQForTrend.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadHBRC_v2.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#8 Horizons http://tsdata.horizons.govt.nz/boo.hts?service=SOS
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadHRC.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#9 Marlborough http://hydro.marlborough.govt.nz/LAWA_WQ.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadMDC.R"))
+rm("Data","df","df2","df2","sample","udf")
+
+#10 Nelson #http://envdata.nelson.govt.nz/data.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadNCC.R")) 
+rm("Data","df","df2","df2","sample","udf")
+
+#11 Northland http://hilltop.nrc.govt.nz/SOERiverWQ.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadNRC.R"))
  rm("Data","df","df2","df2","sample","udf")
-# 
-# # #Bay of Plenty
-#  source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadBOP.R")
-#  rm("Data","df","df2","df2","sample","udf")
 
-# #Gisborne
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadGDC.R")
+#12 Otago http://gisdata.orc.govt.nz/hilltop/WQGlobal.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadORC2.R"))
 rm("Data","df","df2","df2","sample","udf")
 
-#Taranaki
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadTRC.R")
+#13 Tasman http://envdata.tasman.govt.nz/WaterQuality.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadTDC.R"))
 rm("Data","df","df2","df2","sample","udf")
 
-#Hawkes Bay
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadHBRC_v2.R")
+#14 Taranaki https://extranet.trc.govt.nz/getdata/LAWA_river_WQ.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadTRC.R"))
 rm("Data","df","df2","df2","sample","udf")
 
-# #Horizons
-# source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadHRC.R")
-# rm("Data","df","df2","df2","sample","udf")
+#15 West Coast http://hilltop.wcrc.govt.nz/wq.hts?service=Hilltop
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadWCRC.R"))
 
-#Greater Wellington
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadGW.R")
+#6 Waikato http://envdata.waikatoregion.govt.nz:8080/KiWIS/KiWIS
+ try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadWRC.R"))
+ rm("Data","df","df2","df2","sample","udf")
+
+
+
+
+
+#NIWA
+try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadNIWA.R"))
 rm("Data","df","df2","df2","sample","udf")
-
-#Nelson
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadNCC.R")
-rm("Data","df","df2","df2","sample","udf")
-
-# #Tasman
-# source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadTDC.R")
-# rm("Data","df","df2","df2","sample","udf")
-
-#Marlborough
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadMDC.R")
-rm("Data","df","df2","df2","sample","udf")
-
-#Canterbury
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadECAN.R")
-rm("Data","df","df2","df2","sample","udf")
-
-#Otago
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadORC2.R")
-rm("Data","df","df2","df2","sample","udf")
-
-#Southland
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadES.R")
-rm("Data","df","df2","df2","sample","udf")
-
-# #NIWA
-# source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadNIWA.R")
-# rm("Data","df","df2","df2","sample","udf")
-
-#West Coast
-source("//file/herman/r/oa/08/02/2017/Water Quality/R/lawa_state/loadWCRC.R")

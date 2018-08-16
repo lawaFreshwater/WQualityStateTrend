@@ -11,36 +11,36 @@
 
 # Clearing workspace
 rm(list = ls())
-
+closeAllConnections()
 ANALYSIS<-"LOAD WFS"
 # Set working directory
 
 od <- getwd()
-wd <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\R\\lawa_state"
+wd <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state"
 setwd(wd)
 
-logfolder <- "\\\\file\\herman\\R\\OA\\08\\02\\2017\\Water Quality\\ROutput\\"
+logfolder <- "H:/ericg/16666LAWA/2018/WaterQuality/ROutput/"
 
 #/* -===Include required function libraries===- */ 
 
 
-source("scripts/WQualityStateTrend/lawa_state_functions.R")
+source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
 
 ## Supplementary functions
 
 
 
-ld <- function(url,dataLocation,case.fix=TRUE){
+ld <- function(urlIn,dataLocation,case.fix=TRUE){
   if(dataLocation=="web"){
-    (download.file(url,destfile="tmp1",method="wininet"))
+    (download.file(urlIn,destfile="tmp1",method="wininet",quiet=T))
     if(case.fix)  cc("tmp1")
-    xmlfile <- xmlParse(file = "tmp1")
+    xmlfile <- try(xmlParse(file = "tmp1"))
     unlink("tmp1")
   } else if(dataLocation=="file"){
-    cc(url)
-    message("trying file",url,"\nContent type  'text/xml'\n")
-    if(grepl("xml$",url)){
-      xmlfile <- xmlParse(url)
+    cc(urlIn)
+    message("trying file",urlIn,"\nContent type  'text/xml'\n")
+    if(grepl("xml$",urlIn)){
+      xmlfile <- xmlParse(urlIn)
     } else {
       xmlfile=FALSE
     }
@@ -90,25 +90,18 @@ cc <- function(file){
 # Load WFS locations from CSV
 
 ## Load csv with WFS addresses
-urls2017      <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state/CouncilWFS.csv"
-urls          <- read.csv(urls2017,stringsAsFactors=FALSE)
-urls$Agency[urls$Agency=="TDC"] <- "xTDC"   ## Commenting out Tasman DC due to Hilltop Server issues
-#urls2016      <- "//file/herman/R/OA/08/02/2016/Water Quality/R/lawa_state/CouncilWFS.csv"
-#urls          <- read.csv(urls2016,stringsAsFactors=FALSE)
-stopGapNames  <- read.csv("agencyRegion.csv",stringsAsFactors=FALSE)
-
-# Drop BOPRC - GIS Server erroring
-#urls <- urls[-2,]
-# Drop GDC - Error on SErver
-#urls <- urls[-5,]
+urls2018      <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/CouncilWFS.csv"  #H:\ericg\16666LAWA\2018\WaterQuality\R\lawa_state
+urls          <- read.csv(urls2018,stringsAsFactors=FALSE)
 
 #url <- "https://hbrcwebmap.hbrc.govt.nz/arcgis/services/emar/MonitoringSiteReferenceData/MapServer/WFSServer?request=GetFeature&service=WFS&typename=MonitoringSiteReferenceData&srsName=urn:ogc:def:crs:EPSG:6.9:4326"
 #url = "http://gis.horizons.govt.nz/arcgis/services/emar/MonitoringSiteReferenceData/MapServer/WFSServer?request=GetFeature&service=WFS&typename=MonitoringSiteReferenceData"
-
+#http://hilltop.nrc.govt.nz/PublicTelemetry.hts?Service=WFS&request=GetFeature&TypeName=MonitoringSiteReferenceData&version=1.1.0
 # Config for data extract from WFS
-vars <- c("SiteID","CouncilSiteID","LawaSiteID","SWQuality","SWQAltitude","SWQLanduse",
-          "SWQFrequencyAll","SWQFrequencyLast5","Region","Agency")
-
+WQvars <- c("CouncilSiteID","LawaSiteID","SiteID","SWQuality","SWQAltitude","SWQLanduse",
+            "SWQFrequencyAll","SWQFrequencyLast5",
+            "Region","Agency")
+#GetFeatures from amazon
+# http://ec2-52-6-196-14.compute-1.amazonaws.com/sos-bop/service?service=SOS&request=GetFeatureOfInterest&version=2.0.0
 
 
 ### Even though the field names have been defined in the documentation, there are still differences in Field Names specified by each Council
@@ -119,27 +112,32 @@ vars <- c("SiteID","CouncilSiteID","LawaSiteID","SWQuality","SWQAltitude","SWQLa
 ### We'll go with option 2 for the moment.
 
 ### LOG START: output to ROutput folder
+# logfolder <- "H:/ericg/16666LAWA/2018/WaterQuality/ROutput/"
 logfile <- paste(logfolder,"lawa_dataPrep_WFS.log",sep="")
 sink(logfile)
 ###
 
-
-for(h in 1:length(urls$URL)){
-
+rm(siteTable)
+h=1
+for(h in h:length(urls$URL)){
   if(grepl("^x", urls$Agency[h])){
     next
   } 
-  if(!nzchar(urls$URL[h])){  ## returns false if the URL string is missing
+  # Fixing case issue with attribute names with WRC
+  if(urls$Agency[h]=="WRC"){
+    xmldata<-try(ld(urlIn = urls$URL[h],dataLocation = urls$Source[h],case.fix = TRUE))
+  } else{
+    xmldata<-try(ld(urlIn = urls$URL[h],dataLocation = urls$Source[h],case.fix = FALSE))
+  }
+  
+  if('try-error'%in%attr(xmldata,'class')||
+     grepl(pattern = 'error',xmlValue(getNodeSet(xmldata,'/')[[1]]))){
+    cat('Failed for ',urls$Agency[h],'\n')
     next
   }
-  #if(h==12){
-  #  next()
-  #}
-
-  xmldata<-ld(urls$URL[h],urls$Source[h])
   
   if(urls$Source[h]=="file" & grepl("csv$",urls$URL[h])){
-    # Waikato RC data currently in CSV as at 7-Sep-20116
+    # northland RC data currently in XML as at 16-Aug-2018
     # Load CSV and append it to siteTable dataframe
     cc(urls$URL[h])
     tmp <- read.csv(urls$URL[h],stringsAsFactors=FALSE,strip.white = TRUE,sep=",")
@@ -154,11 +152,23 @@ for(h in 1:length(urls$URL)){
       siteTable<-rbind.data.frame(siteTable,tmp,stringsAsFactors=FALSE)
     }
     rm(tmp)
-    
-    
-  } else {
+  }else {
     ### Determine the values used in the [emar:SWQuality] element
-    swq<-unique(sapply(getNodeSet(doc=xmldata, path="//emar:MonitoringSiteReferenceData/emar:SWQuality"), xmlValue))
+    emarSTR="emar:"
+    swq<-unique(sapply(getNodeSet(doc=xmldata, path=paste0("//",emarSTR,"MonitoringSiteReferenceData/emar:SWQuality")), xmlValue))
+    if(any(swq=="")){
+      swq=swq[-which(swq=='')]
+    }
+    if(length(swq)==0){
+      swq<-unique(sapply(getNodeSet(doc=xmldata, path="//MonitoringSiteReferenceData/emar:SWQuality"), xmlValue))
+      if(any(swq=="")){
+        swq=swq[-which(swq=='')]
+      }
+      if(length(swq)>0){
+        emarSTR=""
+      }
+    }
+    
     # since it appears that the possible values for Yes,No, True, False, Y, N, T,F, true, false, yes, no all have the
     # sample alphabetic order, Y, Yes, y, yes, True, true, T, t are always going to be item 2 in this character vector.
     # Handy.
@@ -168,80 +178,145 @@ for(h in 1:length(urls$URL)){
     if(length(swq)==2){
       module <- paste("[emar:SWQuality='",swq[2],"']",sep="")
     } else {
-      module <- paste("[emar:SWQuality='",swq,"']",sep="")
+      if(all(swq%in%c("NO","Yes","YES"))){   #This copes specifically with ecan, which had these three present
+        module <- paste("[emar:SWQuality=",c("'Yes'","'YES'")[which(c("Yes","YES")%in%swq)],"]",sep='')
+      }else{
+        module <- paste("[emar:SWQuality='",swq,"']",sep="")
+      }
     }
-      
+    
     #xmltop<-xmlRoot(xmldata)
     #c <- length(xmlSApply(xmltop, xmlSize)) # number of children for i'th E Element inside <Data></Data> tags
     cat("\n",urls$Agency[h],"\n---------------------------\n",urls$URL[h],"\n",module,"\n",sep="")
-  
-    # Determine number of records in a wfs with module before attempting to extract all the necessary columns needed
-    if(length(sapply(getNodeSet(doc=xmldata, 
-                          path=paste("//emar:MonitoringSiteReferenceData",module,"/emar:",vars[1],sep="")), xmlValue))==0){
-      cat(urls$Agency[h],"has no records for <emar:SWQuality>\n")
-  
-    } else {
     
-
-      # We declared vars earlier. Next section of code goes and gets these values from the WFS
+    # Determine number of records in a wfs with module before attempting to extract all the necessary columns needed
+    emarSWnodes=sapply(getNodeSet(doc=xmldata, 
+                                  path=paste0("//",emarSTR,"MonitoringSiteReferenceData",
+                                              module,"/emar:",WQvars[1])),xmlValue)
+    if(length(emarSWnodes)==0){
+      cat(urls$Agency[h],"has no records for <emar:SWQuality>\n")
+    } else {
+      # We declared WQvars earlier. Next section of code goes and gets these values from the WFS
       # in sequence
-      #vars <- c("SiteID","CouncilSiteID","LawaSiteID","SWQuality","SWQAltitude","SWQLanduse",
-      #          "SWQFrequencyAll","SWQFrequencyLast5","Region","Agency")
-
-      for(i in 1:length(vars)){
-        
+      
+      for(i in 1:length(WQvars)){
         if(i==1){
-          # for the first URL
-          a<- sapply(getNodeSet(doc=xmldata, 
-                                path=paste("//emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
-          cat(vars[i],":\t",length(a),"\n")
+          # for the first WQVar, the LAWASiteID
+          a<- unique(sapply(getNodeSet(doc=xmldata, 
+                                       path=paste0("//emar:LawaSiteID/../../",
+                                                   emarSTR,"MonitoringSiteReferenceData",
+                                                   module,"/emar:",WQvars[i])),xmlValue))
+          cat(WQvars[i],":\t",length(a),"\n")
           #Cleaning var[i] to remove any leading and trailing spaces
-          trimws(a)
+          a=trimws(a)
           nn <- length(a)
+          theseSites=a
         } else {
           # for all subsequent URL's
-         
-          b<- sapply(getNodeSet(doc=xmldata, 
-                                path=paste("//emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"/emar:",vars[i],sep="")), xmlValue)
-          cat(vars[i],":\t",length(b),"\n")
-          if(length(b)==0){
-            if(vars[i]=="Region"){
-              b[1:nn] <-stopGapNames[stopGapNames$Agency==urls$Agency[h],2]
-            } else if(vars[i]=="Agency"){
-              b[1:nn]<-stopGapNames[stopGapNames$Agency==urls$Agency[h],1]
-            } else {
-              b[1:nn]<-""
+          # b<- sapply(getNodeSet(doc=xmldata, 
+          #                       path=paste("//emar:LawaSiteID/../../",emarSTR,"MonitoringSiteReferenceData",
+          #                                  module,"/emar:",WQvars[i],sep="")),
+          #            xmlValue)
+          
+          #Get the new parameter for each site already obtained.  
+          #If the new parameter is not there for a certain site, it will give it an NA 
+          for(thisSite in 1:length(theseSites)){
+            newb<- sapply(getNodeSet(doc=xmldata, 
+                                     path=paste0("//emar:LawaSiteID/../../",
+                                                 emarSTR,"MonitoringSiteReferenceData[emar:CouncilSiteID='",
+                                                 theseSites[thisSite],"'] ",module,"/emar:",WQvars[i])),
+                          xmlValue)
+            newb=unique(newb)
+            if(any(newb=="")){
+              newb=newb[-which(newb=="")]
+            }
+            if(length(newb)==0){
+              newb=NA
+            }
+            if(length(newb)>1){
+              if(length(unique(gsub(x = newb,pattern=" at| @| Road| Rd",replacement='')))==1){
+                newb=newb[1]
+              }else{
+                browser()
+                newb=paste(newb,collapse=' OR ')
+              }
+            }
+            if(thisSite==1){
+              b=newb
+            }else{
+              b=c(b,newb)
             }
           }
-
-          #Cleaning b to remove any leading and trailing spaces
-          trimws(b)
           
+          
+          cat(WQvars[i],":\t",length(b),"\n")
+          if(any(is.na(b))){
+            if(WQvars[i]=="Region"){
+              b[is.na(b)] <-urls$Agency[h]#stopGapNames[stopGapNames$Agency==urls$Agency[h],2]
+            } else if(WQvars[i]=="Agency"){
+              b[is.na(b)]<-urls$Agency[h]#stopGapNames[stopGapNames$Agency==urls$Agency[h],1]
+            } else {
+              b[is.na(b)]<-""
+            }
+          }
+          
+          
+          if(!i%in%c(1,2,3)){
+            #Cleaning b to remove any leading and trailing spaces
+            b=trimws(tolower(b))
+          }
+          
+          if(is.matrix(a)){
+            nra=nrow(a)
+          }else{
+            nra=length(a)
+          }
+          nrb=length(b)
+          
+          if(nrb!=nra & length(unique(b))==1){
+            browser()
+            b=rep(unique(b),nra)
+          }
+          
+          wn=options('warn')$warn
+          options(warn=2)
           a <- cbind(unlist(a),unlist(b))
+          options(warn=wn)
+          rm(wn)
         }
-    
       }
+      
       a <- as.data.frame(a,stringsAsFactors=FALSE)
       ### grab the latitude and longitude values (WFS version must be 1.1.0)
-      latlong    <- sapply(getNodeSet(doc=xmldata, 
-                            path=paste("//gml:Point[../../../emar:MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
-      
-      latlong    <- sapply(getNodeSet(doc=xmldata, 
-                           path=paste("//gml:Point[../../emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"]",sep="")), xmlValue)
-      
+      latlong <- sapply(getNodeSet(doc=xmldata, 
+                                   path=paste0("//gml:Point[../../../",
+                                               emarSTR,"MonitoringSiteReferenceData",
+                                               module,"]")),
+                        xmlValue)
+      latlong <- sapply(getNodeSet(doc=xmldata, 
+                                   path=paste0("//gml:Point[../../emar:LawaSiteID/../../",
+                                               emarSTR,"MonitoringSiteReferenceData",
+                                               module,"]")),
+                        xmlValue)
+      if(length(latlong)>0){
+        latlong <- simplify2array(strsplit(latlong," "))
+      }else{
+        latlong=matrix(data = NA,nrow = 1,ncol=2)
+      }
       
       llSiteName <- sapply(getNodeSet(doc=xmldata, 
-                            path=paste("//gml:Point[../../emar:LawaSiteID/../../emar:MonitoringSiteReferenceData",module,"]",
-                                       "/../../../emar:MonitoringSiteReferenceData/emar:CouncilSiteID",sep="")), xmlValue)
-      latlong <- simplify2array(strsplit(latlong," "))
-  
+                                      path=paste0("//gml:Point[../../emar:LawaSiteID/../../",
+                                                  emarSTR,"MonitoringSiteReferenceData",
+                                                  module,"]","/../../../",
+                                                  emarSTR,"MonitoringSiteReferenceData/emar:CouncilSiteID")),
+                           xmlValue)
       rm(b,xmldata)
       if(nrow(a)==length(latlong[1,])){
-        
         a <- cbind.data.frame(a,as.numeric(latlong[1,]),as.numeric(latlong[2,]))
-        
       } else {
+        # browser()
         b <- as.data.frame(matrix(latlong,ncol=2,nrow=length(latlong[1,]),byrow=TRUE))
+        stopifnot(length(llSiteName)==dim(b)[1])
         b <- cbind.data.frame(b,llSiteName,stringsAsFactors=FALSE)
         names(b) <- c("Lat","Long","CouncilSiteID")
         #Cleaning CouncilSiteID to remove any leading and trailing spaces
@@ -252,15 +327,16 @@ for(h in 1:length(urls$URL)){
         
         #if(h==11){  # Change back to 11 once BOPRC included again
         if(h==12){  # Northland - might be case for all other councils too. Verify
-          a <- merge(a,b,by.x="V2",by.y="CouncilSiteID",all.x=TRUE)
+          a <- merge(x = a,y = b,by.x="V3",by.y="CouncilSiteID",all.x=TRUE)
         } else {        
           a <- merge(a,b,by.x="V1",by.y="CouncilSiteID",all.x=TRUE)
         }
         
       }
-      rm(latlong)      
+      rm(latlong) 
+      
       #a<-as.data.frame(a,stringsAsFactors=FALSE)
-      names(a)<-c(vars,"Lat","Long")
+      names(a)<-c(WQvars,"Lat","Long")
       if(!exists("siteTable")){
         siteTable<-as.data.frame(a,stringsAsFactors=FALSE)
       } else{
@@ -270,12 +346,14 @@ for(h in 1:length(urls$URL)){
     }
     cat("\n---------------------------\n\n",sep="")
   }
+  
 }
 
 ### LOG FINISH: output to ROutput folder
 sink()
 ###
 
+table(siteTable$Agency)
 
 # For some reason, the lat/longs for Wairua at Purua are being loaded into columns as a 2 item vector - the first item being NA, the second being the value
 # The next two lines sort the problem, but if the problem should be resolved, these two lines should error.
@@ -298,44 +376,6 @@ siteTable$SWQFrequencyAll   <- pseudo.titlecase(siteTable$SWQFrequencyAll )
 siteTable$SWQFrequencyLast5 <- pseudo.titlecase(siteTable$SWQFrequencyLast5 )
 
 
-# 
-# #Editing the BOPRC values as landuse and altitude values are missing
-# boprc <- siteTable[siteTable$Agency=="BOPRC",]
-# siteAltLand <- read.csv("//file/herman/r/oa/08/02/2017/Water Quality/1.AsSupplied/BOP/siteAltLand.csv")
-# boprc <- merge(boprc,siteAltLand,by.x="LawaSiteID",by.y="LAWAID",all.x=TRUE)
-# boprc$SWQLanduse  <- boprc$LanduseGroup
-# boprc$SWQAltitude <- boprc$AltitudeGroup
-# 
-# boprc <- boprc[,c(1:12)]
-# 
-# n <- names(boprc)
-# n[9] <- "Region"
-# names(boprc) <- n
-# 
-# siteTable <- siteTable[siteTable$Region!="Bay of Plenty",]
-# siteTable <- rbind(siteTable,boprc)
-# 
-# rm(boprc,n,siteAltLand)
-
-
-#Editing the NIWA values as landuse and altitude values are missing
-NIWA <- siteTable[siteTable$Agency=="NIWA",]
-siteAltLand <- read.csv("//file/herman/r/oa/08/02/2017/Water Quality/0.AsSupplied/NIWA/siteAltLand.txt")
-NIWA <- merge(NIWA,siteAltLand,by.x="LawaSiteID",by.y="LAWAID",all.x=TRUE)
-NIWA$SWQLanduse  <- NIWA$LanduseGroup
-NIWA$SWQAltitude <- NIWA$AltitudeGroup
-
-NIWA <- NIWA[,c(1:12)]
-
-n <- names(NIWA)
-n[9] <- "Region"
-names(NIWA) <- n
-
-siteTable <- siteTable[siteTable$Agency!="NIWA",]
-siteTable <- rbind(siteTable,NIWA)
-
-rm(NIWA,n,siteAltLand)
-
 ## Changing BOP Site names that use extended characters
 ## Waiōtahe at Toone Rd             LAWA-100395   Waiotahe at Toone Rd 
 ## Waitahanui at Ōtamarākau Marae   EBOP-00038    Waitahanui at Otamarakau Marae
@@ -344,27 +384,30 @@ siteTable$SiteID[siteTable$LawaSiteID=="EBOP-00038"] <- "Waitahanui at Otamaraka
 ## A better solution would be to deal directly with the characters and bulk convert to plain ascii text, rather than simply
 ## discovering sites with issues and renaming them manually
 
-
-
-#siteTable <- read.csv(file = "LAWA_Site_Table.csv",stringsAsFactors=FALSE)
-#siteTable <- siteTable[,c(2:13)]
-
-# 
-# #Editing Southland data - error in LawaSiteID for one record
-# # ES-00165\nES-00165
-# sum(grepl("^ES-00165",x = siteTable$LawaSiteID))
-# siteTable$LawaSiteID[grepl("^ES-00165",x = siteTable$LawaSiteID)] <- "ES-00165"
-
+siteTable=unique(siteTable)
+toPull = which(duplicated(siteTable[,-c(11,12)]))
+if(length(toPull)>0){
+  siteTable=siteTable[-toPull,]
+}
+rm(toPull)
 
 ## Swapping coordinate values for Agency=Environment Canterbury Regional Council, Christchurch
 
-agencies <- c("Environment Canterbury Regional Council","Christchurch")
+toSwitch=which(siteTable$Long<0 & siteTable$Lat>0)
+unique(siteTable$Agency[toSwitch])
+newLon=siteTable$Lat[toSwitch]
+siteTable$Lat[toSwitch] <- siteTable$Long[toSwitch]
+siteTable$Long[toSwitch]=newLon
+rm(newLon,toSwitch)
+plot(siteTable$Long,siteTable$Lat,col=as.numeric(factor(siteTable$Agency)))
+points(siteTable$Long,siteTable$Lat,pch=16,cex=0.2)
+table(siteTable$Agency)
 
-for(a in 1:length(agencies)){
-  lon <- siteTable$Lat[siteTable$Agency==agencies[a]]
-  siteTable$Lat[siteTable$Agency==agencies[a]] <- siteTable$Long[siteTable$Agency==agencies[a]]
-  siteTable$Long[siteTable$Agency==agencies[a]]=lon
-}
+
+# Hey Eric,
+# I think SQ30305 is for macroinvertebrates where as STYX05 is for the water quality data – there may be a few with the same issues 😊
+# I hope that makes sense?
+# Emily 
 
 #siteTable$Long[siteTable$LawaSiteID=="NRWQN-00022"] <-siteTable$Long[siteTable$LawaSiteID=="NRWQN-00022"][2]
 
@@ -372,12 +415,11 @@ for(a in 1:length(agencies)){
 # NZTM coordinates from WCRC website: 1466541,5295450
 # WGS84, now:   Latitude	Longitude  	-42.48179737	171.37623113
 
-siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
-siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
-
+# siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
+# siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
+by(INDICES = siteTable$Agency,data = siteTable,FUN = function(x)head(x))
 ## Output for next script
-write.csv(x = siteTable,file = "LAWA_Site_Table.csv")
-#write.csv(x = siteTable,file = "LAWA_Site_Table1.csv")
-write.csv(x = siteTable,file = "LAWA_Site_Table_WFS_PULL.csv")
+write.csv(x = siteTable,file = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",row.names = F)
+write.csv(x = siteTable,file = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_WFS_PULL_River.csv",row.names = F)
 
 

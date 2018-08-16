@@ -31,8 +31,8 @@ rm(list = ls())
 ANALYSIS<-"STATE"
 # Set working directory
 od <- getwd()
-wd <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state"
-setwd(wd)
+# wd <- "//file/herman/R/OA/08/02/2017/Water Quality/R/lawa_state"
+# setwd(wd)
 
 # Clean up output folder before starting script.
 # cleanup <- FALSE
@@ -49,13 +49,13 @@ setwd(wd)
 x <- Sys.time()
 #Reference Dates
 StartYear <- 2012
-EndYear <- 2016
+EndYear <- 2018
 
 #if(!exists(foo, mode="function")) source("lawa_state_functions.R")
 
 #/* -===Include required function libraries===- */ 
 
-source("scripts/WQualityStateTrend/lawa_state_functions.R")
+source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
 
 HilltopLibrary<-FALSE
 library(Hilltop)
@@ -64,6 +64,7 @@ HilltopLibrary<-TRUE
 
 if(HilltopLibrary==TRUE){
   lawa            <- Hilltop::HilltopData("//hilltopdev/data/lawa2017/state/lawa_provisional_2017.dsn")
+  #returns a data file object - a link to the server.
 }
 
 #/* -===Global variable/constant definitions===- */ 
@@ -76,7 +77,7 @@ wqparam <- c("BDISC","TURB","NH4","PH","TON","TN","DRP","TP","ECOLI")
 #wqparam <- c("BDISC") 
 tss <- 3  # tss = time series server
 #tss_url <- "http://hilltopdev.horizons.govt.nz/lawa2014.hts?"
-tss_url <- "http://hilltopdev.horizons.govt.nz:8080/lawa2017.lawa?"
+tss_url <- "http://hilltopdev.horizons.govt.nz:8080/lawa2018.lawa?"
 
 hts <- c("service=Hilltop",
          "&request=SiteList",
@@ -101,12 +102,14 @@ if(HilltopLibrary==FALSE){
 }
 # Replace database call here with call to previously loaded WFS Site data
 #l <- SiteTable(databasePathFileName="//file/herman/R/OA/08/02/2016/MASTER SiteList/lawa_2016.mdb",sqlID=3) ## Allows for different sitenames in hilltop.mdb - requires assessment and population of the database.
-l <- read.csv("LAWA_Site_Table1.csv",stringsAsFactors=FALSE)
+l <- read.csv("LAWA_Site_Table1.csv",stringsAsFactors=FALSE) #This is intersected with catchment info
 #l2 <- read.csv("provisional_LAWA_Site_Table.csv",stringsAsFactors=FALSE)
 #l<-rbind.data.frame(l1,l2,stringsAsFactors=FALSE)
 
 l$SWQLanduse[l$SWQLanduse=="Native"|l$SWQLanduse=="Exotic"|l$SWQLanduse=="Natural"] <- "Forest"
 
+#Get a list of sites on the lawa server connection
+#The result is a data frame that has the site name, location and time range of each site
 if(HilltopLibrary==TRUE){
   s <- Hilltop::SiteList(lawa)
 } else {
@@ -132,19 +135,24 @@ cat("LAWA Water QUality State Analysis\n","Number of sites returned:",length(s))
 # -=== WQ PARAMETERS ===-
 #requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
 for(i in 1:length(wqparam)){
-# for(i in 4:4){
+  # for(i in 4:4){
   ## Added Hilltop library 2017-09-07
   if(HilltopLibrary==FALSE){
     requestData(vendor[tss],tss_url,"service=Hilltop&request=Reset")
   }
   cat("Starting",wqparam[i],"\n")
-
+  
   if(HilltopLibrary==TRUE){
     lawa_collection <- GetCollection.HilltopData(lawa, "//hilltopdev/c$/HilltopServer/LAWA_collections.xml",paste("LAWA",wqparam[i],sep="_"))
     mySites<-unique(lawa_collection[,1])
     myMeas<-unique(lawa_collection[,2])
     for(ii in 1:length(mySites)){
-      dx <- try(GetData(lawa,mySites[ii], myMeas, startTime=paste(StartYear,"-01-01",sep=""), endTime=paste(EndYear + 1,"-01-01",sep=""), WQParams=FALSE),silent=TRUE)
+      dx <- try(GetData(lawa,
+                        mySites[ii],
+                        myMeas,
+                        startTime=paste(StartYear,"-01-01",sep=""),
+                        endTime=paste(EndYear + 1,"-01-01",sep=""),
+                        WQParams=FALSE),silent=TRUE)
       if(attr(dx,"class")!="try-error"){
         if(!exists("wqdata")){
           x1 <- unlist(attr(dx,"dimnames"))
@@ -166,9 +174,9 @@ for(i in 1:length(wqparam)){
     }
     
   } else {
-    r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
+    r <- readUrl(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep="")) #Calls for all data for a wqparam.  All sites?
     #r <- requestData(vendor[tss],tss_url,paste(hts[1],hts[4],wqparam[i],hts[length(hts)],sep=""))
-    wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop")
+    wqdata <- MeasurementList(xmlmdata=r,requestType="Hilltop") #Returns dataframe of Date, SiteName, Value, Method
     wqdata$Value <- as.character(wqdata$Value)
     wqdata$parameter <- wqparam[i]
   }
@@ -197,14 +205,14 @@ for(i in 1:length(wqparam)){
       rm(wqdata_left)
     }
     for(x in 1:length(s)){
-  
+      
       tmp<-wqdata_cen[wqdata_cen$SiteName==s[x],]
       ok <- complete.cases(tmp[,3])
       tmp <- tmp[ok,]  
       # Only process sites that have data
       if(length(tmp[,1])!=0){
         if(!exists("wqdata_left")){
-    
+          
           tmp1<-leftCensored(tmp)
           if(tmp1!=FALSE){
             wqdata_left <- tmp1
@@ -224,13 +232,13 @@ for(i in 1:length(wqparam)){
       }
     }
   }
-  # 3. Handle Right censored (>)
+  # 3. Handle Right censored (>) in state and trend
   cat("Right Censored data\n")
   if(exists("wqdata_right")){
     rm(wqdata_right)
   }
   for(x in 1:length(s)){
-
+    
     tmp<-wqdata_left[wqdata_left$SiteName==s[x],]
     ok <- complete.cases(tmp[,3])
     tmp <- tmp[ok,]  
@@ -250,7 +258,7 @@ for(i in 1:length(wqparam)){
       #cat("No",wqparam[i],"at",s[x],"\n")
     }
   }
- 
+  
   
   #wqdata <- merge(wqdata, l, by.x="SiteName",by.y="Site", all.x=TRUE) # using native sitetable sitenames to match
   wqdata_right$OriginalValue <- wqdata_right$Value 
@@ -266,7 +274,7 @@ for(i in 1:length(wqparam)){
   cat(wqparam[i],": Site count before merge - ",countSites,"\n",
       wqparam[i],": Site count after merge  - ",countSites_afterROS,"\n",sep="")
   
-    
+  
   # Water quality data includes <, > and * at this point. A decision is need here regarding
   # the method for turning these qualified values into a numeric of some form.
   wqdata_q <- wqdata                  # retaining original data retrieved from webservice
@@ -279,7 +287,7 @@ for(i in 1:length(wqparam)){
   # files, but are not explicitly included in the LAWA site table.
   ok <- complete.cases(wqdata[,3])
   wqdata <- wqdata[ok,]
-
+  
   # There are some data that have been provide with duplicate daily values
   #   - values at mid-night and later during the day.
   # To resolve this issue for the moment, we are simply calculating a median
@@ -296,8 +304,8 @@ for(i in 1:length(wqparam)){
                      "UsedInLAWA","AltitudeGroup","LanduseGroup","FrequencyAll","Frequency",
                      "Region","Agency","ISLAND","CatchID","CatchType",
                      "NZREACH","Catchment","Comments","LawaCatchm","CatchLbl")
-
-
+  
+  
   names(wqdata) <- newFieldNames
   
   ### ADD IN THE LAWA SITE TABLE ATTRIBUTES
@@ -305,27 +313,27 @@ for(i in 1:length(wqparam)){
   wqdata_A <- wqdata
   wqdata_A$dayDate <- trunc(wqdata_A$Date,"days")
   
-# This summaryBy configured for site data fields available from WFS feeds
-# Fields have also been renamed from WFS feed to match what the code is
-# expecting, as code originally written expecting data from Hilltop Site Table.
-
-#     wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
-#                           id=~ID+Agency+Site_Type+Region+NZREACH+
-#                             LanduseGroup+AltitudeGroup+Catchment+Frequency+
-#                             NZTM_X+NZTM_Y+WSGS84_X+WSGS84_Y+Comments+
-#                             NIWASITE+NZMS260+MFEX+MFEY+Catchment.Name.LAWA+
-#                             InHilltopFile+UsedInLAWA,
-#                           data=wqdata_A, 
-#                           FUN=c(median), na.rm=TRUE, keep.name=TRUE)
+  # This summaryBy configured for site data fields available from WFS feeds
+  # Fields have also been renamed from WFS feed to match what the code is
+  # expecting, as code originally written expecting data from Hilltop Site Table.
   
-#     ## using median() function
-#     wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
-#                             id=~ID+Agency+Region+NZREACH+
-#                               LanduseGroup+AltitudeGroup+Catchment+Frequency+
-#                               Comments+UsedInLAWA,
-#                             data=wqdata_A, 
-#                             FUN=c(median), na.rm=TRUE, keep.name=TRUE)
-    
+  #     wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
+  #                           id=~ID+Agency+Site_Type+Region+NZREACH+
+  #                             LanduseGroup+AltitudeGroup+Catchment+Frequency+
+  #                             NZTM_X+NZTM_Y+WSGS84_X+WSGS84_Y+Comments+
+  #                             NIWASITE+NZMS260+MFEX+MFEY+Catchment.Name.LAWA+
+  #                             InHilltopFile+UsedInLAWA,
+  #                           data=wqdata_A, 
+  #                           FUN=c(median), na.rm=TRUE, keep.name=TRUE)
+  
+  #     ## using median() function
+  #     wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
+  #                             id=~ID+Agency+Region+NZREACH+
+  #                               LanduseGroup+AltitudeGroup+Catchment+Frequency+
+  #                               Comments+UsedInLAWA,
+  #                             data=wqdata_A, 
+  #                             FUN=c(median), na.rm=TRUE, keep.name=TRUE)
+  
   ## using hazen method for median - quantile(prob=c(0.5),type=5)
   wqdata_med <- summaryBy(Value~LAWAID+SiteName+parameter+dayDate,
                           id=~ID+Agency+Region+NZREACH+
@@ -470,7 +478,7 @@ cat("LAWA Water QUality State Analysis\nAssigning State Scores\n")
 scope <- c("Site","Catchment","Region") 
 
 for(i in 1:3){
-
+  
   ss1 <- StateScore(sa,scope[i],"","",wqparam,comparison=1)  
   ss21 <- StateScore(sa,scope[i],"Upland","",wqparam,comparison=2)
   ss22 <- StateScore(sa,scope[i],"Lowland","",wqparam,comparison=2)
@@ -492,12 +500,12 @@ for(i in 1:3){
   
   
   # RE-ENABLE THIS ONCE BOPRC data available
-#   if(i==1){
-#     ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
-#   } else{
-#     ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
-#   }
-#   
+  #   if(i==1){
+  #     ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
+  #   } else{
+  #     ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
+  #   }
+  #   
   if(i==1){
     ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
   } else{
