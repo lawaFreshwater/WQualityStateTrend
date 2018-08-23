@@ -74,7 +74,8 @@ points.in.polys <- function (pts, polys) {
 # }
 # rm(stepBack)
 
-siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/LAWA_Site_Table.csv",stringsAsFactors=FALSE)  #From lawa_dataPrep_WFS.r
+siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/SiteTableWithNIWA.csv",stringsAsFactors=FALSE)  #From lawa_dataPrep_
+# siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table.csv",stringsAsFactors=FALSE)  #From lawa_dataPrep_WFS.r
 
 siteTable$Lat <- as.numeric(siteTable$Lat)
 siteTable$Long <- as.numeric(siteTable$Long)
@@ -101,7 +102,7 @@ pts@proj4string <- polys@proj4string
 pip <- points.in.polys(pts,polys)
 
 # Just keeping required fields
-pip.data <- pip@data[,c(4,2:3,5:11,15:22)] ## field list(LawaSiteID,SiteID,CouncilSiteID,SWQuality:Agency,)
+pip.data <- pip@data[,c(2:3,1,4:11,16:22)] ## field list(LawaSiteID,SiteID,CouncilSiteID,SWQuality:Agency,)
 
 #pip.data$LAWA_CATCH[pip.data$LAWA_CATCH==0] <- pip.data$CatchID[pip.data$LAWA_CATCH==0]
 
@@ -111,42 +112,68 @@ df<- pip.data[grepl("NRWQN",pip.data$LawaSiteID,ignore.case = TRUE),]
 # Some columns need to be moved around so that correct id's are in correct order
 # This should be dealt with during the initial pull, but for the time-being, we'll
 # deal with this through post-processing feeds
+toSwitch=nchar(dd$SiteID)>nchar(dd$CouncilSiteID)
+table(dd$Agency[toSwitch])
+data.frame(region=dd$Region[dd$Agency=='trc'],CouncilSiteID=dd$CouncilSiteID[dd$Agency=='trc'],SiteID=dd$SiteID[dd$Agency=='trc'])
 
 data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='auckland'],SiteID=dd$SiteID[dd$Region=='auckland'])
 data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='bay of plenty'],SiteID=dd$SiteID[dd$Region=='bay of plenty'])
+data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='canterbury'],SiteID=dd$SiteID[dd$Region=='canterbury'])
 data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='nrc'],SiteID=dd$SiteID[dd$Region=='nrc'])
 data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='trc'],SiteID=dd$SiteID[dd$Region=='trc'])
-data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='canterbury'],SiteID=dd$SiteID[dd$Region=='canterbury'])
 
 # EBOP and NRC need to have SiteId and CouncilSiteID's swapped
-region <-c ("auckland")
+region <-c ("bay of plenty","nrc",'canterbury' )
 for(p in 1:length(region)){
   siteID <- dd$CouncilSiteID[grepl(region[p],dd$Region,ignore.case = TRUE)]
   dd$CouncilSiteID[grepl(region[p],dd$Region,ignore.case = TRUE)] <- dd$SiteID[grepl(region[p],dd$Region,ignore.case = TRUE)]
   dd$SiteID[grepl(region[p],dd$Region,ignore.case = TRUE)] <- siteID
 }
+rm(region,siteID)
 
-
-site<-c("HRC-00036","HRC-00042")
-for(p in 1:length(site)){
-  siteID <- dd$CouncilSiteID[dd$LawaSiteID==site[p]]
-  dd$CouncilSiteID[dd$LawaSiteID==site[p]] <- dd$SiteID[dd$LawaSiteID==site[p]]
-  dd$SiteID[dd$LawaSiteID==site[p]] <- siteID
+region='trc'
+siteID=dd$SiteID[dd$Region==region]
+CouncilSiteID=dd$CouncilSiteID[dd$Region==region]
+toSwitch=nchar(siteID)>nchar(CouncilSiteID)
+if(sum(toSwitch)>0){
+  dd$SiteID[which(dd$Region==region)[toSwitch]]=CouncilSiteID[toSwitch]
+  dd$CouncilSiteID[which(dd$Region==region)[toSwitch]]=siteID[toSwitch]
 }
+rm(toSwitch,siteID,CouncilSiteID,region)
+
+agency='wrc'
+siteID=dd$SiteID[dd$Agency==agency]
+CouncilSiteID=dd$CouncilSiteID[dd$Agency==agency]
+toSwitch=nchar(siteID)>nchar(CouncilSiteID)
+if(sum(toSwitch)>0){
+  dd$SiteID[which(dd$Agency==agency)[toSwitch]]=CouncilSiteID[toSwitch]
+  dd$CouncilSiteID[which(dd$Agency==agency)[toSwitch]]=siteID[toSwitch]
+}
+rm(toSwitch,siteID,CouncilSiteID,agency)
+
+
+
+# site<-c("HRC-00036","HRC-00042")
+# for(p in 1:length(site)){
+#   siteID <- dd$CouncilSiteID[dd$LawaSiteID==site[p]]
+#   dd$CouncilSiteID[dd$LawaSiteID==site[p]] <- dd$SiteID[dd$LawaSiteID==site[p]]
+#   dd$SiteID[dd$LawaSiteID==site[p]] <- siteID
+# }
 
 pip.data <- rbind.data.frame(dd,df)
 
-pip.data$SiteID        <- trimws(pip.data$SiteID)
-pip.data$CouncilSiteID <- trimws(pip.data$CouncilSiteID) 
+pip.data$SiteID        <- tolower(trimws(pip.data$SiteID))
+pip.data$CouncilSiteID <- tolower(trimws(pip.data$CouncilSiteID))
 
 
 #pip.data <- read.csv("LAWA_Site_Table1.csv", stringsAsFactors=FALSE)
 chk <- grepl("\\&",pip.data$CouncilSiteID)
 cat(sum(chk),": site names includuing '&' character")
+pip.data$CouncilSiteID[chk]
 pip.data$CouncilSiteID <- gsub("\\&","%26",pip.data$CouncilSiteID)    # replace "&" symbols (as a reserved character) with ascii representation %26
 #pip.data$LawaCatchm[pip.data$LawaCatchm==0]<-1    # Make sure all catchments set to 1 in case filters set later to exclude zeros.
 pip.data <- unique(pip.data)
-cat(sum(chk),": site names includuing '&' character")
+
 write.csv(pip.data,paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/LAWA_Site_Table1.csv"))
 #write.csv(pip.data,"LAWA_Site_Table.csv")
 

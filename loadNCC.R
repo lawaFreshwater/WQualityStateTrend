@@ -9,9 +9,12 @@ message(paste("NCC: Loading data from NCC Hilltop Server",Process))
 
 
 if(Process){
+          if(exists("importDestination")&!file.exists(paste(importDestination,file="nccSWQ.csv",sep=""))){
+  write.csv(c(0),file=paste(importDestination,file="nccSWQ.csv",sep=""))
+
 ## SET LOCAL WORKING DIRECTORY
 od<-getwd()
-setwd("//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state")
+setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
 
 
 ## Load libraries ------------------------------------------------
@@ -26,16 +29,19 @@ curdir<-getwd()
 ## To pull the data from Southland's hilltop server, I have a config csv that contains the 
 ## site and measurement names
 
-fname <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/2018_csv_config_files/nccSWQ_config.csv"
+fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/nccSWQ_config.csv"
 df <- read.csv(fname,sep=",",stringsAsFactors=FALSE)
+siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
 
-sites <- subset(df,df$Type=="Site")[,2]
+configsites <- subset(df,df$Type=="Site")[,2]
+configsites <- as.vector(configsites)
+sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='ncc'])
 Measurements <- subset(df,df$Type=="Measurement")[,2]
 
 #function to create xml file from url. 
 ld <- function(url){
     str<- tempfile(pattern = "file", tmpdir = tempdir())
-    (download.file(url,destfile=str,method="wininet"))
+    (download.file(url,destfile=str,method="wininet",quiet=T))
     xmlfile <- xmlParse(file = str)
     unlink(str)
     return(xmlfile)
@@ -47,27 +53,21 @@ htsServiceError <- function(url){
   xmldata <- ld(url)
   error<-as.character(sapply(getNodeSet(doc=xmldata, path="//Error"), xmlValue))
   if(length(error)==0){
-    return(TRUE)   # if no error, return TRUE
+    return(xmldata)   # if no error, return the data
   } else {
-    return(FALSE)
+    return(NULL)
   }
 }
 
 #function to either create full xml file or return xml file as NULL depending
 #on the result from the above funciton
 requestData <- function(url){
-  #url<-"http://hilltopdev.horizons.govt.nz/data.hts?service=Hilltop"
-  #RCurl::getURL(paste(url,"&request=Reset",sep=""))
-  #url <- paste(url,request,sep="")
-  cat(url,"\n")
+  # cat(url,"\n")
   ret <- htsServiceError(url)
-  if(ret==TRUE){
-    xmldata <- ld(url)
-    return(xmldata)
+  if(!is.null(ret)){
+    return(ret)
   }else {
-    xmldata <- NULL
-    return(xmldata)
-    
+    return(NULL)
   }
 }
 
@@ -235,5 +235,6 @@ cat("Saving: ",Sys.time()-tm,"\n")
   saveXML(con$value(), file="nccSWQ.xml")
   }
 cat("Finished",Sys.time()-tm,"\n")
+}
 }
 setwd(od)

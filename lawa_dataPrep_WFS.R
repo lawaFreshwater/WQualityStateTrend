@@ -49,7 +49,7 @@ ld <- function(urlIn,dataLocation,case.fix=TRUE){
 }
 
 cc <- function(file){
-  x <- readLines(file)
+  x <- readLines(file,encoding='UTF-8-BOM')
   y <- gsub( "SITEID",            "SiteID",            x, ignore.case = TRUE  )
   y <- gsub( "ELEVATION",         "Elevation",         y, ignore.case = TRUE  )
   y <- gsub( "COUNCILSITEID",     "CouncilSiteID",     y, ignore.case = TRUE  )
@@ -337,6 +337,7 @@ for(h in h:length(urls$URL)){
       
       #a<-as.data.frame(a,stringsAsFactors=FALSE)
       names(a)<-c(WQvars,"Lat","Long")
+      a$accessDate=format(Sys.Date(),"%d-%b-%Y")
       if(!exists("siteTable")){
         siteTable<-as.data.frame(a,stringsAsFactors=FALSE)
       } else{
@@ -348,6 +349,46 @@ for(h in h:length(urls$URL)){
   }
   
 }
+
+#Load Auckland metadata separately.  Special little snowflakes.
+acMetaData=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/acMetaDataB.csv",encoding='UTF-8')
+names(acMetaData)=c("CouncilSiteID","SiteID","Lat","Long","SWQAltitude","SWQLanduse","SWQFrequencyLast5","SWQFrequencyAll")
+acMetaData$Region='auckland'
+acMetaData$Agency='ac'
+acMetaData$SWQuality='yes'
+acMetaData$accessDate=format(file.info("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/acMetaData.csv")$ctime,"%d-%b-%Y")
+
+lawaIDs=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/LAWAMasterSiteListasatMarch2018.csv",stringsAsFactors = F)
+lawaIDs$Lat=as.numeric(lawaIDs$Latitude)
+lawaIDs$Long=as.numeric(lawaIDs$Longitude)
+sum(is.na(lawaIDs$Lat))
+sum(is.na(lawaIDs$Long))
+
+md=rep(0,dim(acMetaData)[1])
+nameMatch=rep("",dim(acMetaData)[1])
+bestMatch=rep(NA,dim(acMetaData)[1])
+for(ast in 1:dim(acMetaData)[1]){
+  dists=sqrt((acMetaData$Lat[ast]-lawaIDs$Lat)^2+(acMetaData$Long[ast]-lawaIDs$Long)^2)
+  cat(min(dists,na.rm=T),'\t')
+  bestMatch[ast]=which.min(dists)
+  md[ast]=min(dists,na.rm=T)
+  nameMatch[ast]=lawaIDs$SiteName[which.min(dists)]
+}
+bestMatch[which(acMetaData$CouncilSiteID=="Cascades @ Whakanewha")]=which(lawaIDs$SiteName=="Cascades @ Whakanewha")#636 #Manual override because wrong lat/longs for this site in LawaSiteID table
+nameMatch[which(acMetaData$CouncilSiteID=="Cascades @ Whakanewha")]=lawaIDs$SiteName[which(lawaIDs$SiteName=="Cascades @ Whakanewha")]
+md[which(acMetaData$CouncilSiteID=="Cascades @ Whakanewha")]=0
+mean(md)*111000 #54m
+cbind(acMetaData[,1:2],nameMatch,md*111000)
+sqrt((acMetaData$Lat[which(acMetaData$CouncilSiteID=="Cascades @ Whakanewha")]-
+        lawaIDs$Lat[which(lawaIDs$SiteName=="Cascades @ Whakanewha")])^2+
+       (acMetaData$Long[which(acMetaData$CouncilSiteID=="Cascades @ Whakanewha")]-
+          lawaIDs$Long[which(lawaIDs$SiteName=="Cascades @ Whakanewha")])^2)
+
+acMetaData$LawaSiteID=lawaIDs$LawaID[bestMatch]
+
+siteTable <- merge(siteTable,acMetaData,all=T)%>%select(c("CouncilSiteID", "LawaSiteID", "SiteID", "SWQuality", "SWQAltitude", 
+                                                          "SWQLanduse", "SWQFrequencyAll", "SWQFrequencyLast5", "Region", 
+                                                          "Agency", "Lat", "Long","accessDate"))
 
 ### LOG FINISH: output to ROutput folder
 sink()
@@ -376,6 +417,7 @@ siteTable$SWQFrequencyAll   <- pseudo.titlecase(siteTable$SWQFrequencyAll )
 siteTable$SWQFrequencyLast5 <- pseudo.titlecase(siteTable$SWQFrequencyLast5 )
 
 
+siteTable$SiteID[grepl(pattern = "[^a-z,A-Z, ,/,@,0-9,.,-,[:punct:]]",x = siteTable$SiteID)]
 ## Changing BOP Site names that use extended characters
 ## Waiōtahe at Toone Rd             LAWA-100395   Waiotahe at Toone Rd 
 ## Waitahanui at Ōtamarākau Marae   EBOP-00038    Waitahanui at Otamarakau Marae
@@ -383,6 +425,8 @@ siteTable$SiteID[siteTable$LawaSiteID=="LAWA-100395"] <- "Waiotahe at Toone Rd"
 siteTable$SiteID[siteTable$LawaSiteID=="EBOP-00038"] <- "Waitahanui at Otamarakau Marae"
 ## A better solution would be to deal directly with the characters and bulk convert to plain ascii text, rather than simply
 ## discovering sites with issues and renaming them manually
+
+siteTable$SiteID[grepl(pattern = "[^a-z,A-Z, ,/,@,0-9,.,-,[:punct:]]",x = siteTable$SiteID)]
 
 siteTable=unique(siteTable)
 toPull = which(duplicated(siteTable[,-c(11,12)]))
@@ -394,11 +438,14 @@ rm(toPull)
 ## Swapping coordinate values for Agency=Environment Canterbury Regional Council, Christchurch
 
 toSwitch=which(siteTable$Long<0 & siteTable$Lat>0)
-unique(siteTable$Agency[toSwitch])
-newLon=siteTable$Lat[toSwitch]
-siteTable$Lat[toSwitch] <- siteTable$Long[toSwitch]
-siteTable$Long[toSwitch]=newLon
-rm(newLon,toSwitch)
+if(length(toSwitch)>0){
+  unique(siteTable$Agency[toSwitch])
+  newLon=siteTable$Lat[toSwitch]
+  siteTable$Lat[toSwitch] <- siteTable$Long[toSwitch]
+  siteTable$Long[toSwitch]=newLon
+  rm(newLon)
+}
+rm(toSwitch)
 plot(siteTable$Long,siteTable$Lat,col=as.numeric(factor(siteTable$Agency)))
 points(siteTable$Long,siteTable$Lat,pch=16,cex=0.2)
 table(siteTable$Agency)
@@ -417,6 +464,8 @@ table(siteTable$Agency)
 
 # siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
 # siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
+
+
 by(INDICES = siteTable$Agency,data = siteTable,FUN = function(x)head(x))
 ## Output for next script
 write.csv(x = siteTable,file = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",row.names = F)

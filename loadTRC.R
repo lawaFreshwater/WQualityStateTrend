@@ -8,11 +8,13 @@ Process<-TRUE
 message(paste("TRC: Loading data from TRC Hilltop Server",Process))
 
 
-if(Process){
-    
+# if(Process){
+#               if(exists("importDestination")&!file.exists(paste(importDestination,file="trcSWQ.csv",sep=""))){
+#   write.csv(c(0),file=paste(importDestination,file="trcSWQ.csv",sep=""))
+
   ## SET LOCAL WORKING DIRECTORY
   od<-getwd()
-  setwd("//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state")
+  setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
   
   
   ## Load libraries ------------------------------------------------
@@ -22,60 +24,61 @@ if(Process){
   
   curdir<-getwd()
   
-  ### Marlborough
+  ### Taranaki
   
   ## To pull the data from Taranaki hilltop server, I have a config csv that contains the 
   ## site and measurement names
   
-  fname <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/2018_csv_config_files/trcSWQ_config.csv"
+  fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/trcSWQ_config.csv"
   df <- read.csv(fname,sep=",",stringsAsFactors=FALSE)
+  siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
   
-  sites <- subset(df,df$Type=="Site")[,2]
+  configsites <- subset(df,df$Type=="Site")[,2]
+  configsites <- as.vector(configsites)
+  sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='trc'])
   Measurements <- subset(df,df$Type=="Measurement")[,2]
   
   #function to create xml file from url. 
   ld <- function(url){
-    options(download.file.method = "libcurl")
+    options(download.file.method = "wininet")
     str<- tempfile(pattern = "file", tmpdir = tempdir())
-    #(download.file(url,destfile=str,method="wininet"))
-    (download.file(url,destfile=str))
+    loadReport <- try(download.file(url,destfile=str,quiet=T))
+    if('try-error'%in%attr(loadReport,'class')){
+      unlink(str)
+        return(NULL)
+    }else{
     xmlfile <- xmlParse(file = str)
     unlink(str)
     return(xmlfile)
+    }
   }
   
   #function to determine which created xmls have an error message.
   #I/e/ the measurement value does not exist for that site. 
-  htsServiceError <- function(url){
+   htsServiceError <- function(url){
     xmldata <- ld(url)
+    if(is.null(xmldata)){
+      return(NULL)
+      }
     error<-as.character(sapply(getNodeSet(doc=xmldata, path="//Error"), xmlValue))
     if(length(error)==0){
-      return(TRUE)   # if no error, return TRUE
+      return(xmldata)   # if no error, return the data
     } else {
-      return(FALSE)
+      return(NULL)
     }
   }
   
   #function to either create full xml file or return xml file as NULL depending
   #on the result from the above funciton
   requestData <- function(url){
-    #url<-"http://hilltopdev.horizons.govt.nz/data.hts?service=Hilltop"
-    #RCurl::getURL(paste(url,"&request=Reset",sep=""))
-    #url <- paste(url,request,sep="")
-    cat(url,"\n")
+    # cat(url,"\n")
     ret <- htsServiceError(url)
-    if(ret==TRUE){
-      xmldata <- ld(url)
-      return(xmldata)
+    if(!is.null(ret)){
+      return(ret)
     }else {
-      xmldata <- NULL
-      return(xmldata)
-      
+      return(NULL)
     }
   }
-  
-  
-  
   
   ## ===============================================================================
   ## Getting Site Data 
@@ -84,16 +87,18 @@ if(Process){
   # Assumption is that gml:pos has coordinates recorded in lat,lon order
   ## Build XML Document --------------------------------------------
   tm<-Sys.time()
+        tab="\t"
   cat("Building XML\n")
   cat("Creating:",Sys.time()-tm,"\n")
   
   con <- xmlOutputDOM("Hilltop")
   con$addTag("Agency", "TRC")
   
-  
-  for(i in 1:length(sites)){
-    
-    for(j in 1:length(Measurements)){
+  i=1
+  for(i in i:length(sites)){
+    cat(sites[i],i,'out of ',length(sites),'\n')
+    j=1
+    for(j in j:length(Measurements)){
       
       url <- paste("https://extranet.trc.govt.nz/getdata/LAWA_river_WQ.hts?service=Hilltop",
                    "&request=GetData",
@@ -102,17 +107,14 @@ if(Process){
                    "&From=2004-01-01",
                    "&To=2018-01-01",sep="")
       url <- gsub(" ", "%20", url)
-      cat(url,"\n")
-      
+      # cat(url,"\n")
       
       #------------------------------------------
       
-      
-      
       xmlfile <- requestData(url)
-      
-      
+
       if(!is.null(xmlfile)){
+        if((!grepl(pattern = "No data",xmlValue(xmlRoot(xmlfile))))){
         xmltop<-xmlRoot(xmlfile)
         
         m<-xmltop[['Measurement']]
@@ -121,15 +123,8 @@ if(Process){
         # Create new node to replace existing <Data /> node in m
         DataNode <- newXMLNode("Data",attrs=c(DateFormat="Calendar",NumItems="2"))
         
-        #addChildren(DataNode, newXMLNode(name = "E",parent = DataNode))
-        
-        #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "T","time"))
-        #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I1","item1"))
-        #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I2","item2"))
-        
-        
+
         #cat(saveXML(DataNode),"\n")
-        tab="\t"
         
         #work on this to make more efficient
         if(Measurements[j]=="WQ Sample"){
@@ -138,8 +133,6 @@ if(Process){
           #ans <- lapply(c("T"),function(var) unlist(xpathApply(m,paste("//",var,sep=""),xmlValue)))
           ans <- xpathApply(m,"//T",xmlValue)
           ans <- unlist(ans)
-          
-          
           
           #new bit here
           for(k in 1:length(ans)){
@@ -226,23 +219,19 @@ if(Process){
         oldNode <- m[['Data']]
         newNode <- DataNode
         replaceNodes(oldNode, newNode)
-        
-        
-        
         con$addNode(m) 
-        
+      }
       }
     }
   }
   cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
-  saveXML(con$value(), paste(importDestination,file="trcSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="trcSWQ.xml")
+  if(!dir.exists(paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/"))){
+    dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/"))
   }
+  saveXML(con$value(), paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/trcSWQ.xml"))
 cat("Finished",Sys.time()-tm,"\n")
   
-  setwd(od)
-}
-
-rm(Process)
+#   setwd(od)
+# }
+# }
+# rm(Process)

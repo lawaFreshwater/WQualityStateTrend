@@ -5,14 +5,10 @@
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
 
-Process<-TRUE
-message(paste("GDC: Loading data from GDC Hilltop Server",Process))
+message(paste("GDC: Loading data from GDC Hilltop Server"))
 
-if(Process){
-    
   ## SET LOCAL WORKING DIRECTORY
-  od<-getwd()
-  setwd("//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state")
+  setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
   
   
   ## Load libraries ------------------------------------------------
@@ -20,23 +16,30 @@ if(Process){
   require(dplyr)   ### dply library to manipulate table joins on dataframes
   require(RCurl)
   
-  curdir<-getwd()
-  
+
   ### Gisborne
   
   ## To pull the data from the hilltop server, I have a config csv that contains the 
   ## site and measurement names
   
-  fname <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/2018_csv_config_files/gdcSWQ_config.csv"
+  fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/gdcSWQ_config.csv"
   df <- read.csv(fname,sep=",",stringsAsFactors=FALSE)
+  siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
   
-  sites <- subset(df,df$Type=="Site")[,2]
+  configsites <- tolower(subset(df,df$Type=="Site")[,2])
   Measurements <- subset(df,df$Type=="Measurement")[,2]
+  sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='gdc'])
+  
+  #What's the difference between the siteTable sites and the configTable sites?
+  sites[!tolower(sites)%in%tolower(configsites)]
+  sites[sites%in%configsites]
+  configsites[!configsites%in%tolower(sites)]
+  configsites[configsites%in%sites]
   
   #function to create xml file from url. 
   ld <- function(url){
     str<- tempfile(pattern = "file", tmpdir = tempdir())
-    (download.file(url,destfile=str,method="wininet"))
+    (download.file(url,destfile=str,method="wininet",quiet = T))
     xmlfile <- xmlParse(file = str)
     unlink(str)
     return(xmlfile)
@@ -48,9 +51,9 @@ if(Process){
     xmldata <- ld(url)
     error<-as.character(sapply(getNodeSet(doc=xmldata, path="//Error"), xmlValue))
     if(length(error)==0){
-      return(TRUE)   # if no error, return TRUE
+      return(xmldata)   # if no error, return the data
     } else {
-      return(FALSE)
+      return(NULL)
     }
   }
   
@@ -62,13 +65,10 @@ if(Process){
     #url <- paste(url,request,sep="")
     #cat(url,"\n")
     ret <- htsServiceError(url)
-    if(ret==TRUE){
-      xmldata <- ld(url)
-      return(xmldata)
+    if(!is.null(ret)){
+      return(ret)
     }else {
-      xmldata <- NULL
-      return(xmldata)
-      
+      return(NULL)
     }
   }
   
@@ -88,7 +88,7 @@ if(Process){
   
   
   for(i in 1:length(sites)){
-    
+    cat(sites[i],i,'out of',length(sites),'\n')
     for(j in 1:length(Measurements)){
       
       url <- paste("http://hilltop.gdc.govt.nz/data.hts?service=Hilltop",
@@ -118,13 +118,11 @@ if(Process){
         DataNode <- newXMLNode("Data",attrs=c(DateFormat="Calendar",NumItems="2"))
         
         #addChildren(DataNode, newXMLNode(name = "E",parent = DataNode))
-        
         #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "T","time"))
         #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I1","item1"))
         #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I2","item2"))
         
-        
-        #cat(saveXML(DataNode),"\n")
+                #cat(saveXML(DataNode),"\n")
         tab="\t"
         
         #work on this to make more efficient
@@ -230,15 +228,7 @@ if(Process){
     }
   }
   cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
 
-  saveXML(con$value(), paste(importDestination,file="gdcSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="gdcSWQ.xml")
-  }
+saveXML(con$value(), paste0("h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/gdcSWQ.xml",sep=""))
   cat("Finished",Sys.time()-tm,"\n")
   
-  setwd(od)
-}
-
-#rm(Process)

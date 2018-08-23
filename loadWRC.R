@@ -5,30 +5,17 @@
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
 
-Process<-TRUE
-message(paste("WRC: Loading data from Kisters/WISKI",Process))
 
-if(Process){
-  
   ## --- Functions ---
   # returns string w/o leading or trailing whitespace
   trim <- function (x) gsub("^\\s+|\\s+$", "", x)
-  
-  ## Convert datestring to mow seconds (number of seconds since 1-Jan-1940 00:00)
-  #mowSecs <- function(x){
-  #  s<-strptime("1940-01-01","%Y-%m-%d")
-  #  t<-strptime(x,"%Y-%m-%d %H:%M:%S")
-  #   t<-strptime(x,"%Y-%m-%d %H:%M:%S")
-  #  x<-(t-s)*86400
-  #}
-  
+
   require(XML)     ### XML library to write hilltop XML
   require(dplyr)   ### dply library to manipulate table joins on dataframes
   require(RCurl)
-  
-  
+
   od<-getwd()
-  setwd("//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state")
+  setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
   
   #function to either create full xml file or return xml file as NULL depending
   #on the result from the above funciton
@@ -50,19 +37,21 @@ if(Process){
   
   
   #function to create xml file from url. 
-  ld <- function(url){
+  ld <- function(url,quiet=T){
     str<- tempfile(pattern = "file", tmpdir = tempdir())
-    (download.file(url,destfile=str,method="wininet"))
+    (download.file(url,destfile=str,method="wininet",quiet=quiet))
     xmlfile <- xmlParse(file = str)
     unlink(str)
     return(xmlfile)
   }
   
-  fname <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/2018_csv_config_files/wrcSWQ_config.csv"
+  fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/wrcSWQ_config.csv"
   df <- read.csv(fname,sep=",",stringsAsFactors=FALSE)
+  siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
   
-  sites        <- subset(df,df$Type=="Site")[,2]
-  sites        <- as.vector(sites)
+  configsites <- subset(df,df$Type=="Site")[,2]
+  configsites <- as.vector(configsites)
+  sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='wrc'])
   Measurements <- subset(df,df$Type=="Measurement")[,2]
   Measurements <- as.vector(Measurements)
   Qualifier    <- subset(df,df$Type=="Qualifier")[,2]
@@ -79,6 +68,7 @@ if(Process){
   sink("wrc_endpoint_scan.txt")
   cat("SiteID\tMeasurementName\tSitesPct\tMeasuresPct\tRERIMP\tWARIMP\n")
   for(i in 1:length(sites)){
+    cat('\n',i,'out of',length(sites))
     for(j in 1:length(Measurements)){
       # Querying procedure=RERIMP.Sample.Results
       url <- paste("http://envdata.waikatoregion.govt.nz:8080/KiWIS/KiWIS?datasource=0&service=SOS&version=2.0&request=GetObservation&featureOfInterest="
@@ -335,12 +325,5 @@ if(Process){
     
   }
   cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
-  saveXML(con$value(), paste(importDestination,file="wrcSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="wrcSWQ.xml")
-  }  
+  saveXML(con$value(), paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),'%Y-%m-%d'),"/wrcSWQ.xml"))
   cat("Finished",Sys.time()-tm,"\n")
-}
-
-rm(Process)

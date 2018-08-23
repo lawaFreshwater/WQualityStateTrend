@@ -4,14 +4,9 @@
 
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
-Process<-TRUE
-message(paste("NRC: Loading data from NRC Hilltop Server",Process))
-
-if(Process){
 
 ## SET LOCAL WORKING DIRECTORY
-od<-getwd()
-setwd("//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state")
+setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
 
 
 ## Load libraries ------------------------------------------------
@@ -19,26 +14,28 @@ require(XML)     ### XML library to write hilltop XML
 require(dplyr)   ### dply library to manipulate table joins on dataframes
 require(RCurl)
 
-curdir<-getwd()
 
 ### Northland
 
 ## To pull the data from Northland hilltop server, I have a config csv that contains the 
 ## site and measurement names
 
-fname <- "//file/herman/R/OA/08/02/2018/Water Quality/R/lawa_state/2018_csv_config_files/nrcSWQ_config.csv"
+fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/nrcSWQ_config.csv"
 df <- read.csv(fname,sep=",",stringsAsFactors=FALSE)
+siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
 
-sites <- subset(df,df$Type=="Site")[,2]
+configsites <- subset(df,df$Type=="Site")[,2]
+configsites <- as.vector(configsites)
+sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='nrc'])
 Measurements <- subset(df,df$Type=="Measurement")[,2]
 
 #function to create xml file from url. 
 ld <- function(url){
-    str<- tempfile(pattern = "file", tmpdir = tempdir())
-    (download.file(url,destfile=str,method="wininet"))
-    xmlfile <- xmlParse(file = str)
-    unlink(str)
-    return(xmlfile)
+  str<- tempfile(pattern = "file", tmpdir = tempdir())
+  (download.file(url,destfile=str,method="wininet",quiet=T))
+  xmlfile <- xmlParse(file = str)
+  unlink(str)
+  return(xmlfile)
 }
 
 #function to determine which created xmls have an error message.
@@ -49,50 +46,20 @@ htsServiceError <- function(url){
   if(length(error)==0){
     return(xmldata)   # if no error, return xml data
   } else {
-    df <- data.frame(Date=as.Date(character()),
-                     File=character(), 
-                     User=character(), 
-                     stringsAsFactors=FALSE) 
-    return(df)
+    return(NULL)
   }
 }
-
-
-
-
 
 #function to either create full xml file or return xml file as NULL depending
 #on the result from the above funciton
 requestData <- function(url){
-  #url<-"http://hilltopdev.horizons.govt.nz/data.hts?service=Hilltop"
-  #RCurl::getURL(paste(url,"&request=Reset",sep=""))
-  #url <- paste(url,request,sep="")
-  #cat(url,"\n")
   ret <- htsServiceError(url)
-  if(attr(ret,"class")[1]=="XMLInternalDocument"){
+  if(!is.null(ret)){
     return(ret)
   } else {
     return(NULL)
   }
-  # 
-  # if(ret==TRUE){
-  #   xmldata <- ld(url)
-  #   return(xmldata)
-  # }else {
-  #   xmldata <- NULL
-  #   return(xmldata)
-  #   
-  # }
 }
-
-
-pause <- function(x)
-{
-  p1 <- proc.time()
-  Sys.sleep(x)
-  proc.time() - p1 # The cpu usage should be negligible
-}
-
 
 ## ===============================================================================
 ## Getting Site Data 
@@ -101,6 +68,7 @@ pause <- function(x)
 # Assumption is that gml:pos has coordinates recorded in lat,lon order
 ## Build XML Document --------------------------------------------
 tm<-Sys.time()
+tab="\t"
 cat("Building XML\n")
 cat("Creating:",Sys.time()-tm,"\n")
 
@@ -109,7 +77,7 @@ con$addTag("Agency", "NRC")
 
 
 for(i in 1:length(sites)){
-  
+  cat(sites[i],i,'out of',length(sites),'\n')
   for(j in 1:length(Measurements)){
     
     url <- paste("http://hilltop.nrc.govt.nz/SOERiverWQ.hts?service=Hilltop",
@@ -119,44 +87,27 @@ for(i in 1:length(sites)){
                  "&From=2004-01-01",
                  "&To=2018-01-01",sep="")
     url <- gsub(" ", "%20", url)
-    cat(url,"\n")
-    
-    
-    #------------------------------------------
-    
-    
+    url <- gsub("\\[", "%5B", url)
+    url <- gsub("\\]", "%5D", url)
+    # cat(url,"\n")
     
     xmlfile <- requestData(url)
-    
     
     if(!is.null(xmlfile)){
       xmltop<-xmlRoot(xmlfile)
       
       m<-xmltop[['Measurement']]
       
-      
       # Create new node to replace existing <Data /> node in m
       DataNode <- newXMLNode("Data",attrs=c(DateFormat="Calendar",NumItems="2"))
       
-      #addChildren(DataNode, newXMLNode(name = "E",parent = DataNode))
-      
-      #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "T","time"))
-      #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I1","item1"))
-      #addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I2","item2"))
-      
-      
-      #cat(saveXML(DataNode),"\n")
-      tab="\t"
       
       #work on this to make more efficient
       if(Measurements[j]=="WQ Sample"){
         ## Make new E node
         # Get Time values
-        #ans <- lapply(c("T"),function(var) unlist(xpathApply(m,paste("//",var,sep=""),xmlValue)))
         ans <- xpathApply(m,"//T",xmlValue)
         ans <- unlist(ans)
-        
-        
         
         #new bit here
         for(k in 1:length(ans)){
@@ -185,10 +136,7 @@ for(i in 1:length(sites)){
           }
           # Adding the Item1 node
           addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I1",item1))
-          
         }
-        
-        
         
       } else {
         ## Make new E node
@@ -228,39 +176,24 @@ for(i in 1:length(sites)){
             for(n in 3:xmlSize(m[['Data']][[N]])){      
               #Getting attributes and building string to put in Item 2
               attrs <- xmlAttrs(m[['Data']][[N]][[n]])  
-              
               item2 <- paste(item2,attrs[1],tab,attrs[2],tab,sep="")
-              
             }
           }
-          
           addChildren(DataNode[[xmlSize(DataNode)]], newXMLNode(name = "I2",item2))
-          
         } 
       }
       #saveXML(DataNode)
-      
       oldNode <- m[['Data']]
       newNode <- DataNode
       replaceNodes(oldNode, newNode)
-      
-      
-      
       con$addNode(m) 
-      
     }
   }
 }
+
+# 101753	Wairua at Purua	-35.652809	174.151895																																				
+
 cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
-  saveXML(con$value(), paste(importDestination,file="nrcSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="nrcSWQ.xml")
-  }
+saveXML(con$value(), paste("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/nrcSWQ.xml",sep=""))
 cat("Finished",Sys.time()-tm,"\n")
 
-setwd(od)
-
-}
-
-rm(Process)
