@@ -7,6 +7,13 @@
 
 # The process flag assumes this script will be called from a batch file. IF the flag is true, the code in this file will run.
 
+
+#Auckland provided metadata which suggested a site list to retrieve from
+#incorporate this site list into the siteTable that would have otherwise been built from their WFS feed
+
+
+
+
 message(paste("AC: Loading data from Kisters/Hydrotel"))
 
 
@@ -70,7 +77,7 @@ message(paste("AC: Loading data from Kisters/Hydrotel"))
     
     
     for(i in 1:length(sites)){
-      cat(sites[i],i,'out of',length(i),'\n')
+      cat(sites[i],i,'out of',length(sites),'\n')
       for(j in 1:length(Measurements)){
         
         url <- paste("http://aklc.hydrotel.co.nz:8080/KiWIS/KiWIS?datasource=2&service=SOS&version=2.0&&request=GetObservation&featureOfInterest="
@@ -119,15 +126,10 @@ message(paste("AC: Loading data from Kisters/Hydrotel"))
     }
     
     #By this point, we have all the data downloaded from the council, in a data frame called Data.
-    write.csv(Data,file = paste(importDestination,file="acSWQ.csv",sep=""),row.names = F)
+    write.csv(Data,file = paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/acSWQ.csv"),row.names = F)
     #The remainder here formats and saves XML
     
-    
-    #p <- sapply(getNodeSet(doc=xmlfilec ,path="//sos:ObservationOffering/swes:name"), xmlValue)
-    
-    #procedure <- c("RERIMP.Sample.Results.P", "WARIMP.Sample.Results.P")
-    
-    
+  
     #----------------
     tm<-Sys.time()
     cat("Building XML\n")
@@ -155,7 +157,6 @@ message(paste("AC: Loading data from Kisters/Hydrotel"))
         
         while(Data$Site[i]==s){
           #for each measurement
-          #cat(datatbl$SiteName[i],"\n")
           con$addTag("Measurement",  attrs=c(SiteName=Data$Site[i]), close=FALSE)
           con$addTag("DataSource",  attrs=c(Name=Data$Measurement[i],NumItems="2"), close=FALSE)
           con$addTag("TSType", "StdSeries")
@@ -166,12 +167,10 @@ message(paste("AC: Loading data from Kisters/Hydrotel"))
           con$addTag("ItemFormat", "F")
           con$addTag("Divisor", "1")
           con$addTag("Units", Data$Units[i])
-          #con$addTag("Units", "Joking")
           con$addTag("Format", "#.###")
           con$closeTag() # ItemInfo
           con$closeTag() # DataSource
-          #saveXML(con$value(), file="out.xml")
-          
+
           # for the TVP and associated measurement water quality parameters
           con$addTag("Data", attrs=c(DateFormat="Calendar", NumItems="2"),close=FALSE)
           d<- Data$Measurement[i]

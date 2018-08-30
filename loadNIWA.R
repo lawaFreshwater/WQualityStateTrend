@@ -106,10 +106,7 @@ rm(mtRows)
 NIWAdataIn$date=lubridate::ymd(NIWAdataIn$start_date)
 NIWAdataIn=NIWAdataIn[NIWAdataIn$date>lubridate::ymd("2003-01-01"),]
 
- # save(NIWAdataIn,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.rData")
- # write.csv(NIWAdataIn,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.csv",row.names = F)
-  																																			
-lawaset=c("NH4", "TURB", "BDISC",  "DRP",  "ECOLI",  "TN",  "TP",  "TON",  "PH")
+
 
 lawaIDs=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/LAWAMasterSiteListasatMarch2018.csv",stringsAsFactors = F)
 lawaIDs$Lat=as.numeric(lawaIDs$Latitude)
@@ -139,7 +136,10 @@ niwaSites$LawaSiteID=lawaIDs$LawaID[bestMatch]
 niwaSites$LawaSiteName=lawaIDs$SiteName[bestMatch]
 niwaSites$DistToLawaSite=round(md*111000,1)
 
-niwaSites[sort.int(niwaSites$DistToLawaSite,decreasing = F,index.return = T)$ix,]
+niwaSites[sort.int(niwaSites$DistToLawaSite,decreasing = T,index.return = T)$ix,]
+
+write.csv(file = 'h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/2018-08-22/NIWAsiteMatching.csv',
+          niwaSites[sort.int(niwaSites$DistToLawaSite,decreasing = T,index.return = T)$ix,],row.names = F)
 
 NIWAdataIn$LawaSiteID = niwaSites$LawaSiteID[match(NIWAdataIn$site_desc,niwaSites$site_desc)]
 NIWAdataIn$SiteName = niwaSites$LawaSiteName[match(NIWAdataIn$site_desc,niwaSites$site_desc)]
@@ -150,7 +150,8 @@ NIWAdataIn$LandUse=NA
 NIWAdataIn$Agency="NIWA"
 NIWAdataInB <- NIWAdataIn%>%dplyr::rename(CouncilSiteID=site_desc,
                                           LawaSiteID=LawaSiteID,
-                                          SiteID=site_ident,
+                                          SiteName=site_ident,
+                                          SiteID=SiteName,   
                                           Date=start_date,
                                           SWQuality=SWQuality,
                                           SWQAltitude=altitude,
@@ -184,35 +185,58 @@ NIWAdataInB$CenType[cenR]="R"
 
 NIWAdataInB$Value[cenL|cenR]=substr(NIWAdataInB$Value[cenL|cenR],2,nchar(NIWAdataInB$Value[cenL|cenR]))
 NIWAdataInB$Value=as.numeric(NIWAdataInB$Value) #NAs are due to "missing"
-NIWAdataInB$SWQAltitude=as.numeric(NIWAdataInB$SWQAltitude) 
+
+
+ #Add NIWA metadata to NIWA data, to later supplement the site Table (in lawa_dataPrep_WFS.r)
+NIWAmeta=read.csv('H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAforMetaData.csv',stringsAsFactors = FALSE)[,-1]
+NIWAmeta=unique(NIWAmeta[,c(1,3,4,6,7)])
+# NIWAmeta=NIWAmeta[grepl(pattern = 'nrwqn',x = NIWAmeta$Location,ignore.case = T),]
+
+#26 of the NIWA data sites are in the siteTable already, 51 are not, these are likely the NRWQN ones
+NIWAdataInB$NumericAltitude=as.numeric(NIWAdataInB$SWQAltitude) 
+
+NIWAdataInB$SWQAltitude = NIWAmeta$Altitude[match(NIWAdataInB$LawaSiteID,NIWAmeta$Location)]
+# NIWAdataInB$SWQAltitude[is.na(NIWAdataInB$SWQAltitude)]=siteTable$SWQAltitude[match(NIWAdataInB$LawaSiteID[is.na(NIWAdataInB$SWQAltitude)],siteTable$LawaSiteID)]
+unique(NIWAdataInB$LawaSiteID[which(NIWAdataInB$SWQAltitude=='')])
+unique(NIWAdataInB$LawaSiteID[which(is.na(NIWAdataInB$SWQAltitude))])
+
+NIWAdataInB$SWQLanduse = NIWAmeta$Landuse[match(NIWAdataInB$LawaSiteID,NIWAmeta$Location)]
+# NIWAdataInB$SWQLanduse[is.na(NIWAdataInB$SWQLanduse)]=siteTable$SWQLanduse[match(NIWAdataInB$LawaSiteID[is.na(NIWAdataInB$SWQLanduse)],siteTable$LawaSiteID)]
+unique(NIWAdataInB$LawaSiteID[which(NIWAdataInB$SWQLanduse=='')])
+unique(NIWAdataInB$LawaSiteID[which(is.na(NIWAdataInB$SWQLanduse))])
+
+NIWAdataInB$SWQFrequencyAll = NIWAmeta$Frequency[match(NIWAdataInB$LawaSiteID,NIWAmeta$Location)]
+# NIWAdataInB$SWQFrequencyAll[is.na(NIWAdataInB$SWQFrequencyAll)]=siteTable$SWQFrequencyAll[match(NIWAdataInB$LawaSiteID[is.na(NIWAdataInB$SWQFrequencyAll)],siteTable$LawaSiteID)]
+unique(NIWAdataInB$LawaSiteID[which(NIWAdataInB$SWQFrequencyAll=='')])
+unique(NIWAdataInB$LawaSiteID[which(is.na(NIWAdataInB$SWQFrequencyAll))])
+
+NIWAdataInB$SWQFrequencyLast5 = NIWAmeta$Frequency[match(NIWAdataInB$LawaSiteID,NIWAmeta$Location)]
+# NIWAdataInB$SWQFrequencyLast5[is.na(NIWAdataInB$SWQFrequencyLast5)]=siteTable$SWQFrequencyLast5[match(NIWAdataInB$LawaSiteID[is.na(NIWAdataInB$SWQFrequencyLast5)],siteTable$LawaSiteID)]
+unique(NIWAdataInB$LawaSiteID[which(NIWAdataInB$SWQFrequencyLast5=='')])
+unique(NIWAdataInB$LawaSiteID[which(is.na(NIWAdataInB$SWQFrequencyLast5))])
+
+
 NIWAdataInB$Lat=as.numeric(NIWAdataInB$Lat) 
 NIWAdataInB$Long=as.numeric(NIWAdataInB$Long) 
 
-
-NIWAdataInB$Date=format.Date(strptime(NIWAdataInB$Date,format="%Y-%m-%d"),"%d-%b-%Y")
-  
 NIWAdataInB$Method=NA
 
-Mode <- function(x) {
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-niwaSites=unique(NIWAdataInB$CouncilSiteID)
-for(ns in 1:length(niwaSites)){
-  siteDates = unique(sort(strptime(NIWAdataInB$Date[NIWAdataInB$CouncilSiteID==niwaSites[ns]],'%d-%b-%Y')))
-  cat(niwaSites[ns],'\t\t',Mode(diff(siteDates)),'\n')
-}
+NIWAdataInB$Date=format.Date(strptime(NIWAdataInB$Date,format="%Y-%m-%d"),"%d-%b-%Y")
 
-NIWAdataInB$Frequency="Monthly"
-NIWAdataInB$SWQFrequencyLast5="Monthly"
+#Check the frequency by looking at most common time difference in this dataset
+
+# Mode <- function(x) {
+#   ux <- unique(x)
+#   ux[which.max(tabulate(match(x, ux)))]
+# }
+# niwaSites=unique(NIWAdataInB$CouncilSiteID)
+# for(ns in 1:length(niwaSites)){
+#   siteDates = unique(sort(strptime(NIWAdataInB$Date[NIWAdataInB$CouncilSiteID==niwaSites[ns]],'%d-%b-%Y')))
+#   cat(niwaSites[ns],'\t\t',Mode(diff(siteDates)),'\n')
+# }
 
 
- save(NIWAdataInB,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqDataB.rData")
- write.csv(NIWAdataInB,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqDataB.csv",row.names = F)
+save(NIWAdataInB,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.rData")
+write.csv(NIWAdataInB,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.csv",row.names = F)
 
- 
- 
-siteTableWithNIWA=merge(x=siteTable,y=unique(NIWAdataInB[,which(names(NIWAdataInB)%in%names(siteTable))]),all.x=T,all.y=T)
- 
-write.csv(siteTableWithNIWA,file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/SiteTableWithNIWA.csv",row.names = F)
 

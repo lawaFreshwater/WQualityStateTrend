@@ -2,6 +2,7 @@ rm(list=ls())
 
 StartYear <- 2013
 EndYear <- 2017
+source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
 
 loadLatestCSV <- function(council=NULL,maxHistory=100){
   stepBack=0
@@ -10,7 +11,7 @@ loadLatestCSV <- function(council=NULL,maxHistory=100){
                          format(Sys.Date()-stepBack,"%Y-%m-%d"),'/'))){
       if(file.exists(paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',
                             format(Sys.Date()-stepBack,"%Y-%m-%d"),'/',council,'.csv'))){
-        cat('loading',council,'from',stepBack,'days ago,',format(Sys.Date()-stepBack,"%Y-%m-%d"),'\n')
+        cat('\nloading',council,'from',stepBack,'days ago,',format(Sys.Date()-stepBack,"%Y-%m-%d"),'\t')
         return(read.csv(paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',
                                format(Sys.Date()-stepBack,"%Y-%m-%d"),'/',council,'.csv'),
                         stringsAsFactors = F))
@@ -18,9 +19,31 @@ loadLatestCSV <- function(council=NULL,maxHistory=100){
     }
     stepBack=stepBack+1
   }
+  cat('\n',council,"Not found")
   return(NULL)
 }
-source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
+
+
+
+#Load latest siteTable1, which is intersected with Catchment
+#NOTE  THIS IS NOT JUST THE SITE  TABLE!
+stbl=tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern="LAWA_Site_Table1.csv",recursive=T,full.names=T),1)
+catSiteTable <- read.csv(stbl,stringsAsFactors = F)
+rm(stbl)
+catSiteTable$SWQLanduse[catSiteTable$SWQLanduse=="Native"|catSiteTable$SWQLanduse=="Exotic"|catSiteTable$SWQLanduse=="Natural"] <- "Forest"
+catSiteTable$SiteID[catSiteTable$SiteID=="karapiro stm at hickey rd bridge - cambridge"] <- "karapiro stm at hickey rd bridge"
+catSiteTable$SiteID=trimws(catSiteTable$SiteID)
+catSiteTable$CouncilSiteID=trimws(catSiteTable$CouncilSiteID)
+catSiteTable$LawaSiteID=trimws(catSiteTable$LawaSiteID)
+catSiteTable$SWQAltitude=tolower(catSiteTable$SWQAltitude)
+catSiteTable$SWQLanduse=tolower(catSiteTable$SWQLanduse)
+catSiteTable$SWQFrequencyAll=tolower(catSiteTable$SWQFrequencyAll)
+catSiteTable$SWQFrequencyLast5=tolower(catSiteTable$SWQFrequencyLast5)
+catSiteTable$Region=tolower(catSiteTable$Region)
+catSiteTable$Agency=tolower(catSiteTable$Agency)
+
+save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
+
 
 for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
   mfl=loadLatestCSV(council)
@@ -31,199 +54,102 @@ for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc",
     names(mfl)[14] <- 'Frequency'
   }
   if('accessDate'%in%names(mfl)){
-    mfl=mfl[,-which(names(mfl)=='accessDate')]
+    # cat('\t it has access date')
+    # mfl=mfl[,-which(names(mfl)=='accessDate')]
   }
-  cat('\n',sum(is.na(mfl$Agency)))
   if(sum(is.na(mfl$Agency))>0){
-    cat(council)
-    browser()
+    cat(sum(is.na(mfl$Agency)),'non agency')
+    cat('\t',paste(collapse=', ',unique(mfl$SiteName[mfl$Agency==''|is.na(mfl$Agency)])))
   }
-  
-  
-  #Could switch namings here, to maximise match with siteTable, with COuncilSiteID longest name?
-  
-  
+  if(sum(!tolower(mfl$CouncilSiteID)%in%tolower(catSiteTable$CouncilSiteID))>0){
+    cat(sum(!unique(tolower(mfl$CouncilSiteID))%in%catSiteTable$CouncilSiteID),'not in site table\n')
+  }
   eval(parse(text=paste0(council,'=mfl')))
   rm(mfl)
 }
-#boprc, gdc were missing some agency
-niwa=read.csv('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqDataB.csv')
+
+niwa=read.csv('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.csv',stringsAsFactors=F)
+if('SWQFrequencyAll'%in%names(niwa)){
+  names(niwa)[which(names(niwa)=='SWQFrequencyAll')] <- "Frequency"
+}
+if(!'accessDate'%in%names(niwa)){
+  niwa$accessDate = format(file.info("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.xml")$mtime,"%d-%b-%Y")
+}
+
+niwa <- niwa%>%select(names(ncc))  #Rearrange niwa columsn to match order of others
+
+niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]=niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]/1000
+
+# store=niwa$SiteID
+# niwa$SiteID=niwa$SiteName
+# niwa$SiteName=store
+# rm(store)
+# *** wqdata$SiteName[wqdata$Agency=="NIWA"]=wqdata$CouncilSiteID[wqdata$Agency=="NIWA"]
+
+#The one site not found in BOP is found in NIWA data, so that's cool.
+# theseBOP=grep(boprc$SiteName,pattern = 'Motu at waitangirua',ignore.case = T)
+# thisNiwa=grep(niwa$CouncilSiteID,pattern = "Motu at Waitangirua",ignore.case = T)[1]
+# boprc$SiteID[theseBOP]=niwa$CouncilSiteID[thisNiwa]
+# boprc$CouncilSiteID[theseBOP]=niwa$CouncilSiteID[thisNiwa]
+# boprc$SWQuality[theseBOP]='yes'
+# boprc$SWQAltitude[theseBOP]=niwa$SWQAltitude[thisNiwa]
+# boprc$SWQLanduse[theseBOP]=niwa$SWQLanduse[thisNiwa]
+# boprc$Region[theseBOP]="bay of plenty"
+# rm(theseBOP,thisNiwa)
+
+
+
 
 
 wqdata=rbind.data.frame(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa,make.row.names = F)
-rm(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa)
-
-
 wqdata$SiteID=trimws(wqdata$SiteID)
 wqdata$CouncilSiteID=trimws(wqdata$CouncilSiteID)
 wqdata$LawaSiteID=trimws(wqdata$LawaSiteID)
+wqdata$SWQAltitude=tolower(wqdata$SWQAltitude)
+wqdata$SWQLanduse=tolower(wqdata$SWQLanduse)
+wqdata$Frequency=tolower(wqdata$Frequency)
+wqdata$SWQFrequencyLast5=tolower(wqdata$SWQFrequencyLast5)
+wqdata$Region=tolower(wqdata$Region)
+wqdata$Agency=tolower(wqdata$Agency)
 
+try(dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"))))
+write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
+rm(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,council)
+
+#Load the latest made (might need to check it works nicely across month folders) 
+if(!exists('wqdata')){
+  acwqdata=tail(dir(path = "H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern = "AllCouncils.csv",recursive = T,full.names = T),1)
+  wqdata=read.csv(acwqdata,stringsAsFactors = F)
+  rm(acwqdata)
+}
+
+
+
+#Audit plots to allow comparison between agencies - check units consistency etc
+wqd=summaryBy(data=wqdata,formula=Value~LawaSiteID+parameter+Date,id=~Agency,FUN=median)
+wqds=spread(wqd,parameter,Value.median)
 params=unique(wqdata$parameter)
-agencies=unique(wqdata$Agency)
 for(param in 1:length(params)){
-  tiff(filename = paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',format(Sys.Date(),'%Y-%m-%d'),'/',params[param],'.tif'),
-       width = 12,height=15,units='in',res=300,compression='lzw',type='cairo')
-  if(param%in%c(1,2,6,7)){
-    par(mfrow=c(4,5))
+  tiff(filename = paste0('h:/ericg/16666LAWA/2018/WaterQuality/QA/',names(wqds)[param+3],'.tif'),
+       width = 15,height=12,units='in',res=300,compression='lzw',type='cairo')
+  if(names(wqds)[param+3]!="PH"){
+    plot(as.factor(wqds$Agency[wqds[,param+3]>0]),wqds[wqds[,param+3]>0,param+3],ylab=names(wqds)[param+3],log='y')
   }else{
-    par(mfrow=c(4,4))
-  }
-  for(age in 1:length(agencies)){
-    if(sum(!is.na(wqdata$Value[wqdata$Agency==agencies[age]&wqdata$parameter==params[param]]))>2){
-      plot(density(na.rm=T,wqdata$Value[wqdata$Agency==agencies[age]&wqdata$parameter==params[param]]),
-           main=paste(params[param],agencies[age]))
-      }
+    plot(as.factor(wqds$Agency),wqds[,param+3],ylab=names(wqds)[param+3])
   }
   if(names(dev.cur())=='tiff'){dev.off()}
 }
 
-write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
 
-wqdata=read.csv(paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),stringsAsFactors = F)
-# rm(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,council)
-
-
-#PrepWFS does not use "SiteName", it gets "CouncilSiteID","LawaSiteID","SiteID" as variables from WFS, into siteTable
-
-#CouncilSiteID   }                             In GDC, matches SiteName
-#LawaSiteID      }    in the wfs xml
-#SiteID          }                             In GDC, matches SiteName
-
-#SiteName             In the SOS XML, saved into local XML
-
-# XML2CSV tries to match SiteName to CouncilSiteID, the LawaSiteID, then SiteID.
-
-#where does siteName get into our CSV files?  It's what's in the XML from SOS.  The others come in by matched in siteTable
-#So don't change the siteName, that's what's come from SOS.  We could switch up CouncilSiteID and SiteID until they match the SiteName
-
-#For NIWA, we'll overwrite CouncilSITEID onto SIteName
-wqdata$SiteName[wqdata$Agency=="NIWA"]=wqdata$CouncilSiteID[wqdata$Agency=="NIWA"]
-
-table(tolower(wqdata$SiteName)==tolower(wqdata$SiteID))         #half half
-table(tolower(wqdata$SiteName)==tolower(wqdata$CouncilSiteID))  #most do  <--------------  but most NIWA didnt
-table(tolower(wqdata$SiteName)==tolower(wqdata$LawaSiteID))     #none
-table(tolower(wqdata$SiteID)==  tolower(wqdata$CouncilSiteID))  #one third do
-
-#Switch in the WQDATA table, the nonmatching CouncilSiteID and SiteID
-toSpin=which(tolower(wqdata$SiteName)!=tolower(wqdata$CouncilSiteID))
-table(tolower(wqdata$SiteName[toSpin])==tolower(wqdata$SiteID[toSpin]))  #The ones that dont match on CouncilSiteID do match on siteID
-storchenegg = wqdata$SiteID[toSpin]                           #So Switch the SiteID and CouncilSiteID for these ones
-wqdata$SiteID[toSpin] = wqdata$CouncilSiteID[toSpin]
-wqdata$CouncilSiteID[toSpin] = storchenegg
-table(wqdata$Agency[toSpin])  #All were boprc
-rm(toSpin)
-
-table(tolower(wqdata$SiteName)==tolower(wqdata$CouncilSiteID))  #all do  <--------------  
-
-
-
-
-#Load latest siteTable1, which is intersected with Catchment
-#NOTE  THIS IS NOT JUST THE SITE  TABLE!
-stepBack=0
-while(stepBack<20){
-  if(dir.exists(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d")))){
-    if(file.exists(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d"),"/LAWA_Site_Table1.csv"))){
-      catSiteTable <- read.csv(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d"),"/LAWA_Site_Table1.csv"),stringsAsFactors=FALSE) #This is intersected with catchment info
-    while(grepl(pattern = '^X',x = names(catSiteTable)[1])){
-      catSiteTable=catSiteTable[,-1]
-    }
-    
-    cat("loading catSiteTable with Catchment info from",stepBack,'days ago\n')
-    stepBack=1000
-    break
-  }
-  }
-  stepBack=stepBack+1
-}
-rm(stepBack)
-
-#Some LawaIDs are missing for boprc and gdc
-table(wqdata$Agency[is.na(wqdata$LawaSiteID)])
-
-table(tolower(catSiteTable$SiteID)==tolower(catSiteTable$CouncilSiteID))  #two thirds no
-table(catSiteTable$Agency[tolower(catSiteTable$SiteID)==tolower(catSiteTable$CouncilSiteID)]) #evenly spread amoung councils
-table(catSiteTable$Agency[tolower(catSiteTable$SiteID)!=tolower(catSiteTable$CouncilSiteID)]) #evenly spread
-
-#These names used in catSiteTable, mostly CouncilSiteID should match against SOS data's SiteName
-#We havent touched WQData's siteName, but we have switched some of their SiteID and CouncilSiteIDs, and should do the same in the catSiteTable
-#"SiteID"            "CouncilSiteID"     "LawaSiteID" 
-table(tolower(unique(tolower(wqdata$LawaSiteID)))%in%tolower(catSiteTable$LawaSiteID)) #7 lawaSiteIDs sitenames aren't in catSiteTable$CouncilSiteID
-# table(tolower(unique(wqdata$SiteID))%in%tolower(catSiteTable$SiteID)) #334 wqdata sitenames aren't in catSiteTable$CouncilSiteID
-# table(tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID)) #334 wqdata sitenames aren't in catSiteTable$CouncilSiteID
-# table(tolower(unique(wqdata$CouncilSiteID))%in%tolower(catSiteTable$CouncilSiteID)) #334 wqdata sitenames aren't in catSiteTable$CouncilSiteID
-# table(unique(tolower(wqdata$SiteName))[which(!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID))]%in%tolower(catSiteTable$SiteID)) #326 of those are found in the SiteID instead
-# 
-# these=match(unique(storchenegg),catSiteTable$)
-# unique(catSiteTable$Agency[these]) #and again, it's all BOPRC.
-# catSiteTable$SiteID[these] <- catSiteTable$CouncilSiteID[these]
-# catSiteTable$CouncilSiteID[these] <- unique(storchenegg)
-# rm(storchenegg)
-
-table(tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID)) #334 wqData$SiteNames aren't found in the catSiteTable$CouncilSiteID
-table(unique(tolower(wqdata$SiteName))[which(!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID))]%in%tolower(catSiteTable$SiteID)) #326 of those are found in the SiteID instead
-missings <- unique(wqdata$SiteName)[!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID)]
-unique(wqdata$Agency)[!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID)] #lots of na
-unique(wqdata$Region)[!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID)] #lots of na
-missings[missings%in%tolower(catSiteTable$SiteID)]  #These are WQ data site names that aren't in the CouncilSiteID, but are in the SiteID
-toSpin <- which(tolower(catSiteTable$SiteID)%in%missings[missings%in%tolower(catSiteTable$SiteID)])
-
-store <- catSiteTable$CouncilSiteID[toSpin]
-catSiteTable$CouncilSiteID[toSpin] <- catSiteTable$SiteID[toSpin]
-catSiteTable$SiteID[toSpin] <- store
-rm(store,toSpin)
-
-table(unique(tolower(wqdata$SiteName))[which(!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID))]%in%tolower(catSiteTable$SiteID)) #8 just arent found at all 
-missings <- unique(tolower(wqdata$SiteName))[which(!tolower(unique(wqdata$SiteName))%in%tolower(catSiteTable$CouncilSiteID))]
-# "motu at waitangirua"           "tarawera at sh30 bridge"       "waimapu 100m d/s sh29"         "avon02"                       
-# "out01"                         "sq33476"                       "waiomoko river at sh35 bridge" "101753"   
-for(mm in missings){
-  cat(grep(pattern=mm,x = tolower(catSiteTable$SiteID),ignore.case = T),'\t')
-  cat(grep(pattern=mm,x = tolower(catSiteTable$CouncilSiteID),ignore.case = T),'\t')
-  cat(grep(pattern=mm,x = tolower(catSiteTable$LawaSiteID),ignore.case = T),'\t')
-}
-
-#Where are they
-table(wqdata$Agency[wqdata$SiteName%in%missings])
-table(wqdata$SiteName[wqdata$SiteName%in%missings&!is.na(wqdata$Agency)])
-table(wqdata$SiteName[wqdata$SiteName%in%missings&is.na(wqdata$Agency)])
-
-
-
-table(tolower(unique(wqdata$CouncilSiteID))%in%tolower(catSiteTable$SiteID))
-table(tolower(unique(wqdata$LawaSiteID))%in%tolower(catSiteTable$SiteID))
-table(tolower(unique(wqdata$SiteID))%in%tolower(catSiteTable$SiteID))  #5 missing
-table(tolower(unique(wqdata$SiteID))%in%tolower(catSiteTable$CouncilSiteID))  
-
-#Some data table siteIDs are not in catSiteTable siteID
-which(!tolower(unique(wqdata$SiteID))%in%tolower(catSiteTable$SiteID))
-missingIDs <- unique(wqdata$SiteID)[which(!tolower(unique(wqdata$SiteID))%in%tolower(catSiteTable$SiteID))]
-#  [1] NA                                 "Avon River at Bridge Street"      "Linwood Canal/City Outfall Drain"
- # "Lyell Creek above mouth"          "Wairua at Purua"    
-table(wqdata$Agency[which(!tolower(wqdata$SiteID)%in%tolower(catSiteTable$SiteID))])
-
-tolower(missingIDs)%in%tolower(catSiteTable$CouncilSiteID)
-grep('purua',catSiteTable$SiteID,ignore.case = T)  #451
-grep('purua',catSiteTable$CouncilSiteID,ignore.case = T) #451
-grep('purua',catSiteTable$LawaSiteID,ignore.case = T)
-
-# Ah.  The bulk of them are Auckland council.
-#Drop them
-cat("WARNING,  DROPPING ALL AUCKLAND COUNCIL DATA AT THE MOMENT")
-wqdata=wqdata[-which(wqdata$SiteName%in%missings),]
-
-
-save(wqdata,file = paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/WQDataCompiled.rData"))
-
-
-
-
-catSiteTable$SWQLanduse[catSiteTable$SWQLanduse=="Native"|catSiteTable$SWQLanduse=="Exotic"|catSiteTable$SWQLanduse=="Natural"] <- "Forest"
-
+#You know?  Should be the SiteName matches with CouncilSiteID.  Are those in these tables?
 wqdata <- left_join(wqdata,catSiteTable,by="LawaSiteID",suffix=c("",".y"))
 
 
-CHECK SUCCESS OF MERGE
+unique(wqdata$LawaSiteID[is.na(wqdata$SWQLanduse.y)])
+# "NRWQN-00012" "ES-00010"    "EBOP-00223"  "NRWQN-00035" "ECAN-10028"  "LAWA-00669"
+
+
+
 
 #These names were used to be applied onto the WQdata load
 c("SiteName","Date","Value","Method","parameter",
@@ -243,24 +169,32 @@ names(wqdata)
 
 wqparam <- c("BDISC","TURB","NH4","PH","TON","TN","DRP","TP","ECOLI") 
 
-allSiteIDs=unique(catSiteTable$SiteID)
-
+suppressWarnings(rm(wqdata_A,wqdata_med,wqdata_n,lawadata,lawadata_q))
 for(i in 1:length(wqparam)){
   
-  wqdata_A = wqdata[wqdata$parameter==wqparam[i],]
-  
+  wqdata_A = wqdata[wqdata$parameter==tolower(wqparam[i]),]
+  # ADD tracking of n, to see how many values the medians were calculated from
   wqdata_med <- summaryBy(formula=Value~SiteName+parameter+Date,
                           id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+
                             SWQLanduse+SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+
                             Comment+SWQuality,
                           data=wqdata_A, 
-                          FUN=c(quantile), prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
+                          FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
   wqdata_med$LAWAID=wqdata_med$LawaSiteID
   wqdata_med$LanduseGroup=wqdata_med$SWQLanduse
   wqdata_med$AltitudeGroup=wqdata_med$SWQAltitude
   wqdata_med$Catchment=wqdata_med$LAWA_CATCH
   wqdata_med$Frequency=wqdata_med$SWQFrequencyLast5
-    rm(wqdata_A)
+
+    wqdata_n <- summaryBy(formula=Value~SiteName+parameter+Date,
+                        id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+
+                          SWQLanduse+SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+
+                          Comment+SWQuality,
+                        data=wqdata_A, 
+                        FUN=length,keep.names=T)
+  rm(wqdata_A)
+  wqdata_med$n=wqdata_n$Value
+  rm(wqdata_n)
   gc()
   # Building dataframe to save at the end of this step 
   if(i==1){
@@ -294,8 +228,6 @@ for(i in 1:length(wqparam)){
   # Exclude PH
   if(wqparam[i]!="PH0"){
     cat("LAWA Water Quality State Analysis\t",wqparam[i],'\n')
-    
-
     cat("LAWA Water QUality State Analysis\nCalculating reference quartiles\n")
     
     state <- c("Site","Catchment","Region","NZ")
@@ -326,30 +258,22 @@ for(i in 1:length(wqparam)){
       sa <- rbind(sa,sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
     }
   }
+rm(sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
 }
-
+rm(state)
 
 # Housekeeping
 # - Saving the lawadata table  USED in NOF calculations
 save(lawadata,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData",sep=""))
 save(lawadata_q,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata_q_",StartYear,"-",EndYear,".RData",sep=""))
-save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
-
-
-# - Remove extraneous objects
-rm(sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
 
 # State Analysis output contains quantiles for each parameter by site.
 # - Rename data.frame headings
-names(sa) <- c("AltitudeGroup","LanduseGroup","Region","Catchment","SiteName","LAWAID","Parameter","Q0","Q25","Q50","Q75","Q100","N","Scope")
-# - Write data.frame to a csv file for inspection
+names(sa) <-  c("AltitudeGroup","LanduseGroup","Region","Catchment","SiteName","LAWAID","Parameter","Q0","Q25","Q50","Q75","Q100","N","Scope")
 
 # filter sa to remove any LAWAIDS that are NA
-sa <- sa[!is.na(sa$LAWAID),]
+sa <- sa[!is.na(sa$LAWAID),]  #drops 45
 write.csv(sa,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/sa",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
-
-#sa<-read.csv(file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/sa",StartYear,"-",EndYear,".csv",sep=""),stringsAsFactors=FALSE)
-#sa <- sa[,-1]
 
 
 cat("LAWA Water QUality State Analysis\nAssigning State Scores\n")
@@ -381,47 +305,34 @@ cat("LAWA Water QUality State Analysis\nAssigning State Scores\n")
 scope <- c("Site","Catchment","Region") 
 i=1
 # for(i in 1:3){
-  
-  ss1 <-   StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower(""),landuse = tolower(""),wqparam,comparison=1)
-  ss21 <-  StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower("Upland"),landuse = tolower(""),wqparam,comparison=2)
-  ss22 <-  StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower("Lowland"),landuse = tolower(""),wqparam,comparison=2)
-  ss31 <-  StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Rural"),wqparam,comparison=3)
-  ss32 <-  StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Forest"),wqparam,comparison=3)
-  ss33 <-  StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Urban"),wqparam,comparison=3)
-  ss411 <- StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower("Upland"),landuse = tolower("Rural"),wqparam,comparison=4)
-  ss412 <- StateScore(df = sa,scope = tolower(scope[i]),altitude = tolower("Upland"),landuse = "forest",wqparam,comparison=4)
-  
-  # The following line will fail if there are no sites with Upland Urban classification
-  # Need to put a test into the StateScore function to return an empty dataframe
-  
-  # RE-ENABLE THIS ONCE BOPRC data available
-  ss413 <- StateScore(sa,scope[i],"Upland","Urban",wqparam,comparison=4)
-  
-  ss421 <- StateScore(sa,scope[i],"Lowland","Rural",wqparam,comparison=4)
-  ss422 <- StateScore(sa,scope[i],"Lowland","Forest",wqparam,comparison=4)
-  ss423 <- StateScore(sa,scope[i],"Lowland","Urban",wqparam,comparison=4)
-  
-  
-  # RE-ENABLE THIS ONCE BOPRC data available
-  #   if(i==1){
-  #     ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
-  #   } else{
-  #     ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
-  #   }
-  #   
-  if(i==1){
-    ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
-  } else{
-    ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
-  }
-  
-# }
 
-# Housekeeping
-# - Remove extraneous objects
-#rm(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss413,ss421,ss422,ss423)
+ss1 <-   StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower(""),landuse = tolower(""),wqparam = wqparam,comparison=1)
+ss21 <-  StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower("Upland"),landuse = tolower(""),wqparam,comparison=2)
+ss22 <-  StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower("Lowland"),landuse = tolower(""),wqparam,comparison=2)
+ss31 <-  StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Rural"),wqparam,comparison=3)
+ss32 <-  StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Forest"),wqparam,comparison=3)
+ss33 <-  StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower(""),landuse = tolower("Urban"),wqparam,comparison=3)
+ss411 <- StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower("Upland"),landuse = tolower("Rural"),wqparam,comparison=4)
+ss412 <- StateScore(df = sa,scopeIn = tolower(scope[i]),altitude = tolower("Upland"),landuse = "forest",wqparam,comparison=4)
+
+# The following line will fail if there are no sites with Upland Urban classification
+# Need to put a test into the StateScore function to return an empty dataframe
+
+# RE-ENABLE THIS ONCE BOPRC data available
+if(0){
+  ss413 <- StateScore(df = sa,scopeIn=scope[i],altitude = "upland",landuse = "urban",wqparam = wqparam,comparison=4)
+  ss421 <- StateScore(sa,scope[i],"lowland","rural",wqparam,comparison=4)
+  ss422 <- StateScore(sa,scope[i],"lowland","forest",wqparam,comparison=4)
+  ss423 <- StateScore(sa,scope[i],"lowland","urban",wqparam,comparison=4)
+}
+
+if(i==1){
+  ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
+} else{
+  ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
+}
 rm(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
-
+# }
 
 
 write.csv(ss,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
@@ -429,10 +340,6 @@ write.csv(ss,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",Sta
 
 
 cat("LAWA Water QUality State Analysis\nCompleted assigning State Scores\n")
-
-
-print(Sys.time() - x)
-
 
 ss_csv <- read.csv(file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",StartYear,"-",EndYear,".csv",sep=""),header=TRUE,sep=",",quote = "\"")
 
@@ -444,9 +351,11 @@ ss.3 <- subset(ss_csv,Scope=="Site")
 ss.3$Location <- ss.3$LAWAID
 
 ss.4 <- rbind.data.frame(ss.1,ss.2,ss.3)
-unique(ss.4$Location)
+# unique(ss.4$Location)
 
 ss.5 <- ss.4[c(18,8,2,3,11,17,4,15,16)-1]  # Location, Parameter, Altitude, Landuse, Q50, LAWAState, Region, Scope, StateGroup
+
+
 
 write.csv(ss.5,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/LAWA_STATE_FINAL_",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
 # lawadata_without_niwa <- subset(lawadata,Agency!="NIWA")

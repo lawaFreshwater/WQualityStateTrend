@@ -4,16 +4,8 @@
 
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
-Process<-TRUE
-message(paste("MDC: Loading data from MDC Hilltop Server",Process))
-
-
-if(Process){
-          if(exists("importDestination")&!file.exists(paste(importDestination,file="mdcSWQ.csv",sep=""))){
-  write.csv(c(0),file=paste(importDestination,file="mdcSWQ.csv",sep=""))
 
   ## SET LOCAL WORKING DIRECTORY
-  od<-getwd()
   setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
   
   
@@ -22,8 +14,7 @@ if(Process){
   require(dplyr)   ### dply library to manipulate table joins on dataframes
   require(RCurl)
   
-  curdir<-getwd()
-  
+
   ### Marlborough
   
   ## To pull the data from Marlborough hilltop server, I have a config csv that contains the 
@@ -89,7 +80,7 @@ if(Process){
   
   
   for(i in 1:length(sites)){
-    cat(i,'out of',length(i),'\n')
+    cat(i,'out of',length(sites),'\n')
     for(j in 1:length(Measurements)){
       
       url <- paste("http://hydro.marlborough.govt.nz/LAWA_WQ.hts?service=Hilltop",
@@ -232,14 +223,6 @@ if(Process){
     }
   }
   cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
-  saveXML(con$value(), paste(importDestination,file="mdcSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="mdcSWQ.xml")
-  }
+  saveXML(con$value(), paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/mdcSWQ.xml",sep=""))
   cat("Finished",Sys.time()-tm,"\n")
   
-  setwd(od)
-}
-}
-rm(Process)

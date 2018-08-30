@@ -36,6 +36,7 @@ message(paste("TRC: Loading data from TRC Hilltop Server",Process))
   configsites <- subset(df,df$Type=="Site")[,2]
   configsites <- as.vector(configsites)
   sites = unique(siteTable$CouncilSiteID[siteTable$Agency=='trc'])
+  sites = unique(trimws(unlist(lapply(sites,strsplit,'\\*or\\*'))))
   Measurements <- subset(df,df$Type=="Measurement")[,2]
   
   #function to create xml file from url. 

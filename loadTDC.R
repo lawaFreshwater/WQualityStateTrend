@@ -4,15 +4,9 @@
 
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
-
-Process<-TRUE
 message(paste("TDC: Loading data from TDC Hilltop Server",Process))
 
 
-if(Process){
-  if(exists("importDestination")&!file.exists(paste(importDestination,file="tdcSWQ.csv",sep=""))){
-    write.csv(c(0),file=paste(importDestination,file="tdcSWQ.csv",sep=""))
-    
     ## SET LOCAL WORKING DIRECTORY
     od<-getwd()
     setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
@@ -277,14 +271,6 @@ if(Process){
       }
     }
     cat("Saving: ",Sys.time()-tm,"\n")
-    if(exists("importDestination")){
-      saveXML(con$value(), paste(importDestination,file="tdcSWQ.xml",sep=""))
-    } else {
-      saveXML(con$value(), file="tdcSWQ.xml")
-    }
+      saveXML(con$value(), paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/tdcSWQ.xml",sep=""))
     cat("Finished",Sys.time()-tm,"\n")
     
-    setwd(od)
-  }
-}
-rm(Process)

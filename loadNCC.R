@@ -8,9 +8,6 @@ Process<-TRUE
 message(paste("NCC: Loading data from NCC Hilltop Server",Process))
 
 
-if(Process){
-          if(exists("importDestination")&!file.exists(paste(importDestination,file="nccSWQ.csv",sep=""))){
-  write.csv(c(0),file=paste(importDestination,file="nccSWQ.csv",sep=""))
 
 ## SET LOCAL WORKING DIRECTORY
 od<-getwd()
@@ -228,13 +225,5 @@ for(i in 1:length(sites)){
     }
   }
 }
-cat("Saving: ",Sys.time()-tm,"\n")
-  if(exists("importDestination")){
-  saveXML(con$value(), paste(importDestination,file="nccSWQ.xml",sep=""))
-  } else {
-  saveXML(con$value(), file="nccSWQ.xml")
-  }
+  saveXML(con$value(), paste0("h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/nccSWQ.xml",sep=""))
 cat("Finished",Sys.time()-tm,"\n")
-}
-}
-setwd(od)

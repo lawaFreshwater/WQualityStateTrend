@@ -23,16 +23,16 @@ importDestination <- paste("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",fo
 # 
 # #1 Auckland
 #  # http://aklc.hydrotel.co.nz:8080/KiWIS/KiWIS
-#  try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadAC.R"))
+  try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadAC.R"))
 #  rm("Data","df","df2","df2","sample","udf")
 # 
 # #2 Bay of Plenty
 #  # http://envdata.waikatoregion.govt.nz:8080/KiWIS/KiWIS
-#  # try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadBOP.R"))
+#try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadBOP.R"))
 #  rm("Data","df","df2","df2","sample","udf")
 # 
 # #3 Canterburyhttp://wateruse.ecan.govt.nz/wqlawa.hts?service=Hilltop
-# try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadECAN.R"))
+ try(source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/loadECAN.R"))
 # rm("Data","df","df2","df2","sample","udf")
 # 
 # #4 Southland http://odp.es.govt.nz/WQ.hts?service=Hilltop

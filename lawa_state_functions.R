@@ -34,9 +34,10 @@
 # */
 
 
-pkgs <- c('XML', 'RCurl','ggplot2','gridExtra','plyr','reshape2','RODBC','doBy','NADA','gdata','survival','lubridate','tidyr','dplyr','EnvStats')
+pkgs <- c('XML', 'RCurl','ggplot2','gridExtra','plyr','reshape2','RODBC',
+'doBy','NADA','gdata','survival','lubridate','tidyr','dplyr','EnvStats')
 if(!all(pkgs %in% installed.packages()[, 'Package']))
-  install.packages(pkgs, dep = T)
+  install.packages(pkgs[!pkgs%in%installed.packages()], dep = T)
 
 require(XML)        # XML library
 require(RCurl)      # managing, parsing URL calls and responses
@@ -358,7 +359,6 @@ StateAnalysis <- function(df,type,level){
   dfs$Count <- dfs_count$Count
   rm(dfs_count)
   
-  
   # ========================
   # Identifying rows meeting exclusion criteria
   dfs$Exclude<-FALSE
@@ -575,10 +575,10 @@ StateAnalysis <- function(df,type,level){
   return(s)
 }
 
-StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
+StateScore <- function(df,scopeIn,altitude,landuse,wqparam,comparison){
   
   # df <- sa
-  # scope <- scope[i]
+  # scopeIn <- scope[i]
   # altitude <- ""
   # landuse <- ""
   # wqparam
@@ -629,9 +629,9 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
     # Region|All, Catchment|All, Site|All 
     if(comparison==1){
       # df_scope represents the results for a specific scope : Site, Catchment, Region
-      df_scope           <- subset(df, tolower(Scope)==tolower(scope) &
+      df_scope           <- subset(df, tolower(Scope)==tolower(scopeIn) &
                                      tolower(Parameter)==tolower(wqparam[i]))
-      df_scope$StateGroup<- paste(scope,"All",sep="|")
+      df_scope$StateGroup<- paste(scopeIn,"All",sep="|")
       # df_baseline represents the dataset against which site results will be compared and
       # assigned a state score  
       df_baseline <- subset(df, tolower(AltitudeGroup)=="all" &
@@ -640,11 +640,11 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
                               tolower(Parameter)==tolower(wqparam[i]))  
       
       # Region|Upland, Catchment|Upland, Site|Upland     Region|Lowland, Catchment|Lowland, Site|Lowland
-    } else if(comparison==2){          
-      df_scope           <- subset(df, tolower(Scope)==tolower(scope) &
+    } else if(comparison==2){
+      df_scope           <- subset(df, tolower(Scope)==tolower(scopeIn) &
                                      tolower(AltitudeGroup)==tolower(altitude) &
                                      tolower(Parameter)==tolower(wqparam[i]))
-      df_scope$StateGroup<- paste(scope,altitude,sep="|")
+      df_scope$StateGroup<- paste(scopeIn,altitude,sep="|")
       # df_baseline represents the dataset against which site results will be compared and
       # assigned a state score  
       df_baseline <- subset(df, tolower(AltitudeGroup)==tolower(altitude) &
@@ -653,11 +653,11 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
                               tolower(Parameter)==tolower(wqparam[i]))  
       
       # Region|Forest, Catchment|Forest, Site|Forest     Region|Rural, Catchment|Rural, Site|Rural     Region|Urban, Catchment|Urban, Site|Urban
-    } else if(comparison==3){          
-      df_scope           <- subset(df, tolower(Scope)==scope &
+    } else if(comparison==3){
+      df_scope           <- subset(df, tolower(Scope)==scopeIn &
                                      tolower(LanduseGroup)==landuse &
                                      tolower(Parameter)==tolower(wqparam[i]))
-      df_scope$StateGroup<- paste(scope,landuse,sep="|")
+      df_scope$StateGroup<- paste(scopeIn,landuse,sep="|")
       # df_baseline represents the dataset against which site results will be compared and
       # assigned a state score  
       df_baseline <- subset(df, tolower(AltitudeGroup)=="all" &
@@ -668,12 +668,12 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
     # Region|Upland|Forest, Catchment|Upland|Forest, Site|Upland|Forest     Region|Upland|Rural, Catchment|Upland|Rural, Site|Upland|Rural     Region|Upland|Urban, Catchment|Upland|Urban, Site|Upland|Urban
     # Region|Lowland|Forest, Catchment|Lowland|Forest, Site|Lowland|Forest     Region|Lowland|Rural, Catchment|Lowland|Rural, Site|Lowland|Rural     Region|Lowland|Urban, Catchment|Lowland|Urban, Site|Lowland|Urban 
     else if(comparison==4){
-      df_scope           <- subset(df, tolower(Scope)==scope &
+      df_scope           <- subset(df, tolower(Scope)==scopeIn &
                                      tolower(AltitudeGroup)==altitude &
                                      tolower(LanduseGroup)==landuse &
                                      tolower(Parameter)==tolower(wqparam[i]))
       if(length(df_scope[,1])!=0){ # Testing for zero records returned - allows for zero Upland - Urban combination during testing.
-        df_scope$StateGroup<- paste(scope,altitude,landuse,sep="|")
+        df_scope$StateGroup<- paste(scopeIn,altitude,landuse,sep="|")
         # df_baseline represents the dataset against which site results will be compared and
         # assigned a state score  
         df_baseline <- subset(df, tolower(AltitudeGroup)==altitude &
@@ -690,7 +690,7 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
       newstate<-calcScore(df_scope,df_baseline,wqparam[i])
     }
     if(!exists('state')){
-      if(exists(newstate)){
+      if(exists('newstate')){
         state=newstate
       }
     } else {
@@ -699,7 +699,12 @@ StateScore <- function(df,scope,altitude,landuse,wqparam,comparison){
       }
     }
   }
+  if(exists('state')){
   return(state)
+  }else{
+      return(NULL)
+    }
+  
 }
 
 calcScore <- function(df1,df2,wqparam){
@@ -1316,8 +1321,8 @@ samplesByInterval <- function (StartYear, EndYear, StartMonth, EndMonth, lawadat
   
   lawadata$depth <- 0   # indicating surface samples
   
-  lawadata$year <- as.character(lawadata$Date,format="%Y")
-  lawadata$mon <- as.character(lawadata$Date,format="%m")
+  lawadata$year <- format(strptime(lawadata$Date,format="%d-%b-%Y"),format="%Y")
+  lawadata$mon <- format(strptime(lawadata$Date,format="%d-%b-%Y"),format="%m")
   lawadata$yearMon <- paste(lawadata$year,"-",lawadata$mon,"-01",sep="")
   
   # West Coast adjustment given they collect seasons based on actual seasons, not annual quarters

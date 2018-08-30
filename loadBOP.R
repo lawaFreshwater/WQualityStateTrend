@@ -204,7 +204,7 @@ if(Process){
       while(Data$Site[i]==s){
         #for each measurement
         #cat(datatbl$SiteName[i],"\n")
-        con$addTag("Measurement",  attrs=c(SiteName=Data$Site.Name[i]), close=FALSE)
+        con$addTag("Measurement",  attrs=c(SiteName=Data$Aquarius.ID[i]), close=FALSE)
         con$addTag("LawaID",Data$ï..LAWAID[i])
         con$addTag("SiteID",Data$Aquarius.ID[i])
         con$addTag("CouncilSiteID",  attrs=c(SiteName=Data$Site.Name[i]))
@@ -282,7 +282,7 @@ if(Process){
       
       # Adding WQ Sample Datasource to finish off this Site
       # along with Sample parameters
-      con$addTag("Measurement",  attrs=c(SiteName=Data$Site[start]), close=FALSE)
+      con$addTag("Measurement",  attrs=c(SiteName=Data$Aquarius.ID[start]), close=FALSE)
       con$addTag("DataSource",  attrs=c(Name="WQ Sample", NumItems="1"), close=FALSE)
       con$addTag("TSType", "StdSeries")
       con$addTag("DataType", "WQSample")

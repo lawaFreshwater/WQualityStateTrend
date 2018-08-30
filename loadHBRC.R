@@ -81,7 +81,7 @@ cat("Creating:",Sys.time()-tm,"\n")
 con <- xmlOutputDOM("Hilltop")
 con$addTag("Agency", "HBRC")
 
-
+i=1
 for(i in i:length(sites)){
   cat(sites[i],i,'out of ',length(sites),'\n')
   for(j in 1:length(Measurements)){

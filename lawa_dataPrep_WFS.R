@@ -15,20 +15,13 @@ closeAllConnections()
 ANALYSIS<-"LOAD WFS"
 # Set working directory
 
-od <- getwd()
-wd <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state"
-setwd(wd)
-
+setwd("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state")
 logfolder <- "H:/ericg/16666LAWA/2018/WaterQuality/ROutput/"
 
 #/* -===Include required function libraries===- */ 
 
 
 source("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
-
-## Supplementary functions
-
-
 
 ld <- function(urlIn,dataLocation,case.fix=TRUE){
   if(dataLocation=="web"){
@@ -90,12 +83,9 @@ cc <- function(file){
 # Load WFS locations from CSV
 
 ## Load csv with WFS addresses
-urls2018      <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/CouncilWFS.csv"  #H:\ericg\16666LAWA\2018\WaterQuality\R\lawa_state
+urls2018      <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/CouncilWFS.csv"  
 urls          <- read.csv(urls2018,stringsAsFactors=FALSE)
 
-#url <- "https://hbrcwebmap.hbrc.govt.nz/arcgis/services/emar/MonitoringSiteReferenceData/MapServer/WFSServer?request=GetFeature&service=WFS&typename=MonitoringSiteReferenceData&srsName=urn:ogc:def:crs:EPSG:6.9:4326"
-#url = "http://gis.horizons.govt.nz/arcgis/services/emar/MonitoringSiteReferenceData/MapServer/WFSServer?request=GetFeature&service=WFS&typename=MonitoringSiteReferenceData"
-#http://hilltop.nrc.govt.nz/PublicTelemetry.hts?Service=WFS&request=GetFeature&TypeName=MonitoringSiteReferenceData&version=1.1.0
 # Config for data extract from WFS
 WQvars <- c("CouncilSiteID","LawaSiteID","SiteID","SWQuality","SWQAltitude","SWQLanduse",
             "SWQFrequencyAll","SWQFrequencyLast5",
@@ -108,13 +98,12 @@ WQvars <- c("CouncilSiteID","LawaSiteID","SiteID","SWQuality","SWQAltitude","SWQ
 ### Either 
 ###  1. Define a method that determines the name of the elements in each WFS feed; OR
 ###  2. Note discrepencies as ERRORS and feedback to supplying Council.
-
 ### We'll go with option 2 for the moment.
 
 ### LOG START: output to ROutput folder
 # logfolder <- "H:/ericg/16666LAWA/2018/WaterQuality/ROutput/"
-logfile <- paste(logfolder,"lawa_dataPrep_WFS.log",sep="")
-sink(logfile)
+# logfile <- paste(logfolder,"lawa_dataPrep_WFS.log",sep="")
+# sink(logfile)
 ###
 
 rm(siteTable)
@@ -185,8 +174,6 @@ for(h in h:length(urls$URL)){
       }
     }
     
-    #xmltop<-xmlRoot(xmldata)
-    #c <- length(xmlSApply(xmltop, xmlSize)) # number of children for i'th E Element inside <Data></Data> tags
     cat("\n",urls$Agency[h],"\n---------------------------\n",urls$URL[h],"\n",module,"\n",sep="")
     
     # Determine number of records in a wfs with module before attempting to extract all the necessary columns needed
@@ -252,9 +239,9 @@ for(h in h:length(urls$URL)){
           cat(WQvars[i],":\t",length(b),"\n")
           if(any(is.na(b))){
             if(WQvars[i]=="Region"){
-              b[is.na(b)] <-urls$Agency[h]#stopGapNames[stopGapNames$Agency==urls$Agency[h],2]
+              b[is.na(b)] <-urls$Agency[h]
             } else if(WQvars[i]=="Agency"){
-              b[is.na(b)]<-urls$Agency[h]#stopGapNames[stopGapNames$Agency==urls$Agency[h],1]
+              b[is.na(b)]<-urls$Agency[h]
             } else {
               b[is.na(b)]<-""
             }
@@ -314,18 +301,15 @@ for(h in h:length(urls$URL)){
       if(nrow(a)==length(latlong[1,])){
         a <- cbind.data.frame(a,as.numeric(latlong[1,]),as.numeric(latlong[2,]))
       } else {
-        # browser()
         b <- as.data.frame(matrix(latlong,ncol=2,nrow=length(latlong[1,]),byrow=TRUE))
         stopifnot(length(llSiteName)==dim(b)[1])
         b <- cbind.data.frame(b,llSiteName,stringsAsFactors=FALSE)
         names(b) <- c("Lat","Long","CouncilSiteID")
         #Cleaning CouncilSiteID to remove any leading and trailing spaces
         b$CouncilSiteID <- trimws(b$CouncilSiteID)
-        #b$SiteID <- trimws(b$SiteID)
-        
+
         cat("Only",length(latlong[1,]),"out of",nrow(a),"sites with lat-longs.\nSome site locations missing\n")
         
-        #if(h==11){  # Change back to 11 once BOPRC included again
         if(h==12){  # Northland - might be case for all other councils too. Verify
           a <- merge(x = a,y = b,by.x="V3",by.y="CouncilSiteID",all.x=TRUE)
         } else {        
@@ -350,13 +334,16 @@ for(h in h:length(urls$URL)){
   
 }
 
+rm(urls2018, urls,h,i,newb,nn,nra,nrb,swq,theseSites,thisSite,emarSTR,emarSWnodes,llSiteName,module,ANALYSIS,logfolder)
+
 #Load Auckland metadata separately.  Special little snowflakes.
-acMetaData=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/acMetaDataB.csv",encoding='UTF-8')
+acMetaData=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/ACRiverSitesMetaData.csv",stringsAsFactors = F)
 names(acMetaData)=c("CouncilSiteID","SiteID","Lat","Long","SWQAltitude","SWQLanduse","SWQFrequencyLast5","SWQFrequencyAll")
 acMetaData$Region='auckland'
 acMetaData$Agency='ac'
 acMetaData$SWQuality='yes'
-acMetaData$accessDate=format(file.info("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/acMetaData.csv")$ctime,"%d-%b-%Y")
+acMetaData$accessDate=format(file.info("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/ACRiverSitesMetaData.csv")$ctime,"%d-%b-%Y")
+
 
 lawaIDs=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/LAWAMasterSiteListasatMarch2018.csv",stringsAsFactors = F)
 lawaIDs$Lat=as.numeric(lawaIDs$Latitude)
@@ -389,12 +376,95 @@ acMetaData$LawaSiteID=lawaIDs$LawaID[bestMatch]
 siteTable <- merge(siteTable,acMetaData,all=T)%>%select(c("CouncilSiteID", "LawaSiteID", "SiteID", "SWQuality", "SWQAltitude", 
                                                           "SWQLanduse", "SWQFrequencyAll", "SWQFrequencyLast5", "Region", 
                                                           "Agency", "Lat", "Long","accessDate"))
-
+rm(acMetaData,nameMatch,dists,md,ast,bestMatch)
 ### LOG FINISH: output to ROutput folder
-sink()
+# sink()
 ###
+save(siteTable,file='tempSiteTabBeforeNIWA.rData')
 
+
+#Add NIWA sites separately ####
+
+#This depends on script "LoadNIWA.r" having been run recently
+
+NIWAdataIn=read.csv("h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.csv",stringsAsFactors=FALSE)
+niwaSub=unique(NIWAdataIn[which(!NIWAdataIn$LawaSiteID%in%siteTable$LawaSiteID),which(names(NIWAdataIn)%in%names(siteTable))])
+rm(NIWAdataIn)
+
+#Drop duplicates from NIWA data
+dups=names(table(niwaSub$LawaSiteID)[table(niwaSub$LawaSiteID)>1])
+# siteTable[siteTable$LawaSiteID%in%dups,][order(siteTable$LawaSiteID[siteTable$LawaSiteID%in%dups]),]
+
+for(dp in seq_along(dups)){
+  these=which(niwaSub$LawaSiteID==dups[dp])
+  if(!all(identical(x=niwaSub[these[1],],y=niwaSub[these[2],]))){
+    for(cc in 1:dim(niwaSub)[2]){
+      if(!is.numeric(niwaSub[these[1],cc])){
+        if(!identical(niwaSub[these[1],cc],niwaSub[these[2],cc])){
+          if(niwaSub[these[1],cc]!="" & niwaSub[these[2],cc]!=""){
+            replacement=paste(niwaSub[these[1],cc],'*or*',niwaSub[these[2],cc])
+            cat(niwaSub[these[1],cc],'\t',niwaSub[these[2],cc],'\t',replacement,'\n')
+            niwaSub[these[1],cc] <- replacement
+            niwaSub[these[2],cc] <- replacement
+          }
+          else{
+            replacement=paste(unique(niwaSub[these,cc]),collapse='')
+            niwaSub[these[2],cc]=replacement
+            niwaSub[these[1],cc]=replacement
+          }
+        }
+      }else{
+        if(abs(diff(niwaSub[these,cc]))>1e-4){browser()}
+        replacement=mean(niwaSub[these,cc],na.rm=T)
+        niwaSub[these[1],cc] <- replacement
+        niwaSub[these[2],cc] <- replacement
+      }
+    }
+  }
+}
+niwaSub=unique(niwaSub)
+rm(dups,replacement,cc,dp,these)
+
+siteTable=merge(x=siteTable,y=niwaSub,all.x=T,all.y=T)
+rm(niwaSub)
+
+
+siteTable$Region=tolower(siteTable$Region)
+siteTable$Region[siteTable$Region=='alexandra'] <- 'otago'
+siteTable$Region[siteTable$Region=='dunedin'] <- 'otago'
+siteTable$Region[siteTable$Region=='tekapo'] <- 'otago'
+siteTable$Region[siteTable$Region=='orc'] <- 'otago'
+siteTable$Region[siteTable$Region=='christchurch'] <- 'canterbury'
+siteTable$Region[siteTable$Region=='gisborne'] <- 'gisborne'
+siteTable$Region[siteTable$Region=='gdc'] <- 'gisborne'
+siteTable$Region[siteTable$Region=='greymouth'] <- 'west coast'
+siteTable$Region[siteTable$Region=='wcrc'] <- 'west coast'
+siteTable$Region[siteTable$Region=='hamilton'] <- 'waikato'
+siteTable$Region[siteTable$Region=='turangi'] <- 'waikato'
+siteTable$Region[siteTable$Region=='wrc'] <- 'waikato'
+siteTable$Region[siteTable$Region=='havelock nth'] <- 'hawkes bay'
+siteTable$Region[siteTable$Region=='hbrc'] <- 'hawkes bay'
+siteTable$Region[siteTable$Region=='ncc'] <- 'nelson'
+siteTable$Region[siteTable$Region=='rotorua'] <- 'bay of plenty'
+siteTable$Region[siteTable$Region=='wanganui'] <- 'horizons'
+siteTable$Region[siteTable$Region=='gwrc'] <- 'wellington'
+siteTable$Region[siteTable$Region=='whangarei'] <- 'northland'
+siteTable$Region[siteTable$Region=='nrc'] <- 'northland'
+siteTable$Region[siteTable$Region=='mdc'] <- 'marlborough'
+siteTable$Region[siteTable$Region=='tdc'] <- 'tasman'
+siteTable$Region[siteTable$Region=='trc'] <- 'taranaki'
+table(siteTable$Region)
+
+
+siteTable$Agency=tolower(siteTable$Agency)
+siteTable$Agency[siteTable$Agency=='auckland council'] <- 'ac'
+siteTable$Agency[siteTable$Agency=='christchurch'] <- 'ecan'
+siteTable$Agency[siteTable$Agency=='environment canterbury'] <- 'ecan'
 table(siteTable$Agency)
+
+
+
+
 
 # For some reason, the lat/longs for Wairua at Purua are being loaded into columns as a 2 item vector - the first item being NA, the second being the value
 # The next two lines sort the problem, but if the problem should be resolved, these two lines should error.
@@ -423,17 +493,12 @@ siteTable$SiteID[grepl(pattern = "[^a-z,A-Z, ,/,@,0-9,.,-,[:punct:]]",x = siteTa
 ## Waitahanui at Ōtamarākau Marae   EBOP-00038    Waitahanui at Otamarakau Marae
 siteTable$SiteID[siteTable$LawaSiteID=="LAWA-100395"] <- "Waiotahe at Toone Rd"
 siteTable$SiteID[siteTable$LawaSiteID=="EBOP-00038"] <- "Waitahanui at Otamarakau Marae"
-## A better solution would be to deal directly with the characters and bulk convert to plain ascii text, rather than simply
-## discovering sites with issues and renaming them manually
-
 siteTable$SiteID[grepl(pattern = "[^a-z,A-Z, ,/,@,0-9,.,-,[:punct:]]",x = siteTable$SiteID)]
 
-siteTable=unique(siteTable)
-toPull = which(duplicated(siteTable[,-c(11,12)]))
-if(length(toPull)>0){
-  siteTable=siteTable[-toPull,]
-}
-rm(toPull)
+# siteTable$Region[siteTable$LawaSiteID=="NRWQN-00034"] <- 'southland'
+# siteTable$Region[siteTable$LawaSiteID=="ES-00010"] <- 'southland'
+
+
 
 ## Swapping coordinate values for Agency=Environment Canterbury Regional Council, Christchurch
 
@@ -446,9 +511,12 @@ if(length(toSwitch)>0){
   rm(newLon)
 }
 rm(toSwitch)
-plot(siteTable$Long,siteTable$Lat,col=as.numeric(factor(siteTable$Agency)))
-points(siteTable$Long,siteTable$Lat,pch=16,cex=0.2)
+plot(siteTable$Long,siteTable$Lat,col=as.numeric(factor(siteTable$Region)))
+points(siteTable$Long[siteTable$Agency=='niwa'],
+       siteTable$Lat[siteTable$Agency=='niwa'],pch=16,cex=0.5,
+       col=as.numeric(factor(siteTable$Region)[siteTable$Agency=='niwa']))
 table(siteTable$Agency)
+
 
 
 # Hey Eric,
@@ -465,6 +533,61 @@ table(siteTable$Agency)
 # siteTable$Lat[siteTable$LawaSiteID=="WCRC-00031"]  <- -42.48179737
 # siteTable$Long[siteTable$LawaSiteID=="WCRC-00031"] <- 171.37623113
 
+trcSites=which(siteTable$Agency=='trc')
+for(siten in seq_along(trcSites)){
+  if(siteTable$SWQAltitude[trcSites[siten]]=="" & length(which(siteTable$LawaSiteID==siteTable$LawaSiteID[trcSites[siten]]))>1){
+    siteTable$SWQAltitude[trcSites[siten]] = unique(
+      siteTable$SWQAltitude[which(siteTable$LawaSiteID == siteTable$LawaSiteID[trcSites[siten]] &
+                                    siteTable$SWQAltitude!="")])
+  }
+  if(siteTable$SWQLanduse[trcSites[siten]]=="" & length(which(siteTable$LawaSiteID==siteTable$LawaSiteID[trcSites[siten]]))>1){
+    siteTable$SWQLanduse[trcSites[siten]] = unique(
+      siteTable$SWQLanduse[which(siteTable$LawaSiteID == siteTable$LawaSiteID[trcSites[siten]] &
+                                   siteTable$SWQLanduse!="")])
+  }
+  if(siteTable$SWQFrequencyAll[trcSites[siten]]=="" & length(which(siteTable$LawaSiteID==siteTable$LawaSiteID[trcSites[siten]]))>1){
+    siteTable$SWQFrequencyAll[trcSites[siten]] = unique(
+      siteTable$SWQFrequencyAll[which(siteTable$LawaSiteID == siteTable$LawaSiteID[trcSites[siten]] &
+                                        siteTable$SWQFrequencyAll!="")])
+  }
+  if(siteTable$SWQFrequencyLast5[trcSites[siten]]=="" & length(which(siteTable$LawaSiteID==siteTable$LawaSiteID[trcSites[siten]]))>1){
+    siteTable$SWQFrequencyLast5[trcSites[siten]] = unique(
+      siteTable$SWQFrequencyLast5[which(siteTable$LawaSiteID == siteTable$LawaSiteID[trcSites[siten]] &
+                                          siteTable$SWQFrequencyLast5!="")])
+  }
+}
+
+dups=names(table(siteTable$LawaSiteID)[table(siteTable$LawaSiteID)>1])
+# siteTable[siteTable$LawaSiteID%in%dups,][order(siteTable$LawaSiteID[siteTable$LawaSiteID%in%dups]),]
+
+for(dp in seq_along(dups)){
+  these=which(siteTable$LawaSiteID==dups[dp])
+  if(!all(identical(x=siteTable[these[1],],y=siteTable[these[2],]))){
+    for(cc in 1:dim(siteTable)[2]){
+      if(!is.numeric(siteTable[these[1],cc])){
+        if(!identical(siteTable[these[1],cc],siteTable[these[2],cc])){
+          if(!is.na(siteTable[these[1],cc]) &siteTable[these[1],cc]!="" & !is.na(siteTable[these[2],cc]) & siteTable[these[2],cc]!=""){
+            replacement=paste(siteTable[these[1],cc],'*or*',siteTable[these[2],cc])
+            cat(siteTable[these[1],cc],'\t',siteTable[these[2],cc],'\t',replacement,'\n')
+            siteTable[these[1],cc] <- replacement
+            siteTable[these[2],cc] <- replacement
+          }
+          else{
+            replacement=paste(unique(siteTable[these[!is.na(siteTable[these,cc])],cc]),collapse='')
+            siteTable[these[2],cc]=replacement
+            siteTable[these[1],cc]=replacement
+          }
+        }
+      }else{
+        if(abs(diff(siteTable[these,cc]))>1e-4){browser()}
+        replacement=mean(siteTable[these,cc],na.rm=T)
+        siteTable[these[1],cc] <- replacement
+        siteTable[these[2],cc] <- replacement
+      }
+    }
+  }
+}
+siteTable=unique(siteTable)
 
 by(INDICES = siteTable$Agency,data = siteTable,FUN = function(x)head(x))
 ## Output for next script
