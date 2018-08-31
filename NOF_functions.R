@@ -62,7 +62,7 @@ NOF_FindBand <- function(value, bandColumn){
   # e.g. 2.2 is true only for the second (2.2<=1.0 is FALSE byt 2.2<=2.4 is TRUE etc)
   # e.g. 5 is true only for the third (5<=1.0 is FALSE, 5<=2.4 is FALSE but 5<=6.9 is TRUE)
   # e.g. 8 is true only for the fourth
-  paste(LETTERS[which(unlist(lapply(paste0(value,bandColumn),FUN = function(x){eval(parse(text=x))})))],collapse=',')
+  paste(LETTERS[which(unlist(lapply(gsub(pattern = 'x',replacement = value,x = bandColumn),FUN = function(x){eval(parse(text=x))})))],collapse='')
 }
 #=======================================================================================================
 
