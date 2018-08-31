@@ -3,26 +3,7 @@ rm(list=ls())
 StartYear <- 2013
 EndYear <- 2017
 source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
-
-loadLatestCSV <- function(council=NULL,maxHistory=100){
-  stepBack=0
-  while(stepBack<maxHistory){
-    if(dir.exists(paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',
-                         format(Sys.Date()-stepBack,"%Y-%m-%d"),'/'))){
-      if(file.exists(paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',
-                            format(Sys.Date()-stepBack,"%Y-%m-%d"),'/',council,'.csv'))){
-        cat('\nloading',council,'from',stepBack,'days ago,',format(Sys.Date()-stepBack,"%Y-%m-%d"),'\t')
-        return(read.csv(paste0('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/',
-                               format(Sys.Date()-stepBack,"%Y-%m-%d"),'/',council,'.csv'),
-                        stringsAsFactors = F))
-      }
-    }
-    stepBack=stepBack+1
-  }
-  cat('\n',council,"Not found")
-  return(NULL)
-}
-
+source("h:/ericg/16666LAWA/2018/LAWAFunctionsEG.R")
 
 
 #Load latest siteTable1, which is intersected with Catchment
@@ -46,24 +27,21 @@ save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_siteta
 
 
 for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  mfl=loadLatestCSV(council)
+  mfl=loadLatestCSVRiver(council)
   while(grepl(pattern = '^X',x = names(mfl)[1])){
     mfl=mfl[,-1]
   }
-  if(names(mfl)[14]=='SWQFrequencyAll'){
-    names(mfl)[14] <- 'Frequency'
-  }
-  if('accessDate'%in%names(mfl)){
-    # cat('\t it has access date')
-    # mfl=mfl[,-which(names(mfl)=='accessDate')]
-  }
+  names(mfl)[names(mfl)=='SWQFrequencyAll'] <- 'Frequency'
+
+
   if(sum(is.na(mfl$Agency))>0){
     cat(sum(is.na(mfl$Agency)),'non agency')
     cat('\t',paste(collapse=', ',unique(mfl$SiteName[mfl$Agency==''|is.na(mfl$Agency)])))
   }
   if(sum(!tolower(mfl$CouncilSiteID)%in%tolower(catSiteTable$CouncilSiteID))>0){
-    cat(sum(!unique(tolower(mfl$CouncilSiteID))%in%catSiteTable$CouncilSiteID),'not in site table\n')
+    cat('\t',sum(!unique(tolower(mfl$CouncilSiteID))%in%catSiteTable$CouncilSiteID),'not in site table\n')
   }
+
   eval(parse(text=paste0(council,'=mfl')))
   rm(mfl)
 }
@@ -80,26 +58,8 @@ niwa <- niwa%>%select(names(ncc))  #Rearrange niwa columsn to match order of oth
 
 niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]=niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]/1000
 
-# store=niwa$SiteID
-# niwa$SiteID=niwa$SiteName
-# niwa$SiteName=store
-# rm(store)
-# *** wqdata$SiteName[wqdata$Agency=="NIWA"]=wqdata$CouncilSiteID[wqdata$Agency=="NIWA"]
 
-#The one site not found in BOP is found in NIWA data, so that's cool.
-# theseBOP=grep(boprc$SiteName,pattern = 'Motu at waitangirua',ignore.case = T)
-# thisNiwa=grep(niwa$CouncilSiteID,pattern = "Motu at Waitangirua",ignore.case = T)[1]
-# boprc$SiteID[theseBOP]=niwa$CouncilSiteID[thisNiwa]
-# boprc$CouncilSiteID[theseBOP]=niwa$CouncilSiteID[thisNiwa]
-# boprc$SWQuality[theseBOP]='yes'
-# boprc$SWQAltitude[theseBOP]=niwa$SWQAltitude[thisNiwa]
-# boprc$SWQLanduse[theseBOP]=niwa$SWQLanduse[thisNiwa]
-# boprc$Region[theseBOP]="bay of plenty"
-# rm(theseBOP,thisNiwa)
-
-
-
-
+boprc=boprc[-which(is.na(boprc$CouncilSiteID)),]
 
 wqdata=rbind.data.frame(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa,make.row.names = F)
 wqdata$SiteID=trimws(wqdata$SiteID)
@@ -111,6 +71,9 @@ wqdata$Frequency=tolower(wqdata$Frequency)
 wqdata$SWQFrequencyLast5=tolower(wqdata$SWQFrequencyLast5)
 wqdata$Region=tolower(wqdata$Region)
 wqdata$Agency=tolower(wqdata$Agency)
+
+wqdata$CenType[wqdata$CenType%in%c("L","Left")] <- "Left"
+wqdata$CenType[wqdata$CenType%in%c("R","Right")] <- "Right"
 
 try(dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"))))
 write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
@@ -150,34 +113,16 @@ unique(wqdata$LawaSiteID[is.na(wqdata$SWQLanduse.y)])
 
 
 
-
-#These names were used to be applied onto the WQdata load
-c("SiteName","Date","Value","Method","parameter",
-  "Censored","CenType","ROS","iValues","converted_values","dflag",
-  "i2Values","OriginalValues","X","LAWAID","ID",
-  "UsedInLAWA","AltitudeGroup","LanduseGroup","FrequencyAll","Frequency",
-  "Region","Agency","ISLAND","CatchID","CatchType",
-  "NZREACH","Catchment","Comments","LawaCatchm","CatchLbl")
-
-names(wqdata)
-[1] "SiteName"          "Date"              "Value"             "Method"            "parameter"        
-[6] "Censored"          "CenType"           "CouncilSiteID"     "LawaSiteID"        "SiteID"           
-[11] "SWQuality"         "SWQAltitude"       "SWQLanduse"        "Frequency"         "SWQFrequencyLast5"
-[16] "Region"            "Agency"            "Lat"               "Long"              "X"                
-[21] "SWQFrequencyAll"   "ISLAND"            "CatchID"           "CatchType"         
-"TermReach"         "LAWA_CATCH"        "Comment"           "SOE_FW_RIV"        "CATCH_LBL"        
-
 wqparam <- c("BDISC","TURB","NH4","PH","TON","TN","DRP","TP","ECOLI") 
 
 suppressWarnings(rm(wqdata_A,wqdata_med,wqdata_n,lawadata,lawadata_q))
 for(i in 1:length(wqparam)){
   
-  wqdata_A = wqdata[wqdata$parameter==tolower(wqparam[i]),]
+  wqdata_A = wqdata[tolower(wqdata$parameter)==tolower(wqparam[i]),]
   # ADD tracking of n, to see how many values the medians were calculated from
   wqdata_med <- summaryBy(formula=Value~SiteName+parameter+Date,
-                          id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+
-                            SWQLanduse+SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+
-                            Comment+SWQuality,
+                          id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
+                            SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
                           data=wqdata_A, 
                           FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
   wqdata_med$LAWAID=wqdata_med$LawaSiteID
@@ -187,24 +132,39 @@ for(i in 1:length(wqparam)){
   wqdata_med$Frequency=wqdata_med$SWQFrequencyLast5
 
     wqdata_n <- summaryBy(formula=Value~SiteName+parameter+Date,
-                        id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+
-                          SWQLanduse+SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+
-                          Comment+SWQuality,
+                        id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
+                          SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
                         data=wqdata_A, 
                         FUN=length,keep.names=T)
-  rm(wqdata_A)
+  
+  wqdata_c <- summaryBy(formula=Censored~SiteName+parameter+Date,
+                        id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
+                          SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
+                        data=wqdata_A, 
+                        FUN=any,keep.names=T)
+  wqdata_ct <- summaryBy(formula=CenType~SiteName+parameter+Date,
+                         id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
+                           SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
+                         data=wqdata_A, 
+                         FUN=function(x)paste(unique(x)),keep.names=T)
   wqdata_med$n=wqdata_n$Value
+  wqdata_med$Censored=wqdata_c$Censored
+  if(!is.null(wqdata_ct$CenType)){
+    wqdata_med$CenType=wqdata_ct$CenType
+  }else{
+    wqdata_med$CenType="FALSE"
+  }
   rm(wqdata_n)
+  rm(wqdata_c,wqdata_ct)
+  rm(wqdata_A)
   gc()
   # Building dataframe to save at the end of this step 
   if(i==1){
-    #lawadata <- wqdata
     lawadata <- wqdata_med
-    lawadata_q <- wqdata
+    # lawadata_q <- wqdata
   } else {
-    #lawadata <- rbind(lawadata,wqdata)
     lawadata <- rbind(lawadata,wqdata_med)
-    lawadata_q <- rbind(lawadata_q,wqdata)
+    # lawadata_q <- rbind(lawadata_q,wqdata)
   }   
   
   
@@ -260,12 +220,13 @@ for(i in 1:length(wqparam)){
   }
 rm(sa11,sa21,sa22,sa23,sa24,sa31,sa32,sa33,sa34,sa41,sa42,sa43,sa44)
 }
+
 rm(state)
 
 # Housekeeping
 # - Saving the lawadata table  USED in NOF calculations
 save(lawadata,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData",sep=""))
-save(lawadata_q,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata_q_",StartYear,"-",EndYear,".RData",sep=""))
+# save(lawadata_q,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata_q_",StartYear,"-",EndYear,".RData",sep=""))
 
 # State Analysis output contains quantiles for each parameter by site.
 # - Rename data.frame headings
