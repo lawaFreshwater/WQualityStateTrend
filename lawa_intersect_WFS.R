@@ -58,27 +58,7 @@ points.in.polys <- function (pts, polys) {
 # ======================================
 # Load WFS locations from CSV
 
-## Load csv with WFS locations
-# 
-# stepBack=0
-# while(stepBack<20){
-#   if(dir.exists(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d")))){
-#     if(file.exists(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d"),"/LAWA_Site_Table1.csv")))
-#       siteTable <- read.csv(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date()-stepBack,"%Y-%m-%d"),"/LAWA_Site_Table1.csv"),stringsAsFactors=FALSE) #This is intersected with catchment info
-#     while(grepl(pattern = '^X',x = names(siteTable)[1])){
-#       siteTable=siteTable[,-1]
-#     }
-#     
-#     cat("loading siteTable with Catchment info from",stepBack,'days ago\n')
-#     stepBack=1000
-#     break
-#   }
-#   stepBack=stepBack+1
-# }
-# rm(stepBack)
-
-siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/SiteTableWithNIWA.csv",stringsAsFactors=FALSE)  #From loadNIWA
-# siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)  #From lawa_dataPrep_WFS.r
+ siteTable <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)  #From lawa_dataPrep_WFS.r
 
 
 pts <- siteTable[complete.cases(siteTable$Lat),]  #All are complete
@@ -136,57 +116,6 @@ pip.data <- pip@data[,c(2:3,1,4:11,16:22)] ## field list(LawaSiteID,SiteID,Counc
 
 dd<- pip.data[!grepl("NRWQN",pip.data$LawaSiteID,ignore.case = TRUE),]
 df<- pip.data[grepl("NRWQN",pip.data$LawaSiteID,ignore.case = TRUE),]
-
-if(0){
-  # Some columns need to be moved around so that correct id's are in correct order
-  # This should be dealt with during the initial pull, but for the time-being, we'll
-  # deal with this through post-processing feeds
-  toSwitch=nchar(dd$SiteID)>nchar(dd$CouncilSiteID)
-  table(dd$Agency[toSwitch])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Agency=='trc'],SiteID=dd$SiteID[dd$Agency=='trc'])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='auckland'],SiteID=dd$SiteID[dd$Region=='auckland'])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='bay of plenty'],SiteID=dd$SiteID[dd$Region=='bay of plenty'])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='canterbury'],SiteID=dd$SiteID[dd$Region=='canterbury'])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='nrc'],SiteID=dd$SiteID[dd$Region=='nrc'])
-  data.frame(CouncilSiteID=dd$CouncilSiteID[dd$Region=='trc'],SiteID=dd$SiteID[dd$Region=='trc'])
-  
-  # EBOP and NRC need to have SiteId and CouncilSiteID's swapped
-  region <-c ("bay of plenty","nrc",'canterbury' )
-  for(p in 1:length(region)){
-    siteID <- dd$CouncilSiteID[grepl(region[p],dd$Region,ignore.case = TRUE)]
-    dd$CouncilSiteID[grepl(region[p],dd$Region,ignore.case = TRUE)] <- dd$SiteID[grepl(region[p],dd$Region,ignore.case = TRUE)]
-    dd$SiteID[grepl(region[p],dd$Region,ignore.case = TRUE)] <- siteID
-  }
-  rm(region,siteID)
-  
-  region='trc'
-  siteID=dd$SiteID[dd$Region==region]
-  CouncilSiteID=dd$CouncilSiteID[dd$Region==region]
-  toSwitch=nchar(siteID)>nchar(CouncilSiteID)
-  if(sum(toSwitch)>0){
-    dd$SiteID[which(dd$Region==region)[toSwitch]]=CouncilSiteID[toSwitch]
-    dd$CouncilSiteID[which(dd$Region==region)[toSwitch]]=siteID[toSwitch]
-  }
-  rm(toSwitch,siteID,CouncilSiteID,region)
-  
-  agency='wrc'
-  siteID=dd$SiteID[dd$Agency==agency]
-  CouncilSiteID=dd$CouncilSiteID[dd$Agency==agency]
-  toSwitch=nchar(siteID)>nchar(CouncilSiteID)
-  if(sum(toSwitch)>0){
-    dd$SiteID[which(dd$Agency==agency)[toSwitch]]=CouncilSiteID[toSwitch]
-    dd$CouncilSiteID[which(dd$Agency==agency)[toSwitch]]=siteID[toSwitch]
-  }
-  rm(toSwitch,siteID,CouncilSiteID,agency)
-}
-
-
-# site<-c("HRC-00036","HRC-00042")
-# for(p in 1:length(site)){
-#   siteID <- dd$CouncilSiteID[dd$LawaSiteID==site[p]]
-#   dd$CouncilSiteID[dd$LawaSiteID==site[p]] <- dd$SiteID[dd$LawaSiteID==site[p]]
-#   dd$SiteID[dd$LawaSiteID==site[p]] <- siteID
-# }
 
 pip.data <- rbind.data.frame(dd,df)
 
