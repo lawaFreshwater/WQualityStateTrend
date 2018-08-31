@@ -27,12 +27,11 @@ NOF_PERIOD <- 5 # years
 ## Load NOF Bands
 NOFbandDefinitions <- read.csv("H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/NOFbandDefinitions3.csv", header = TRUE, stringsAsFactors=FALSE)
 # Band Median.Nitrate X95th.Percentile.Nitrate Median.Ammoniacal.N Max.Ammoniacal.N E..coli Ecoli95 EcoliRec540 EcoliRec260
-# A          <=1.0                    <=1.5              <=0.03           <=0.05   <=130   <=540          <5         <20
-# B          <=2.4                    <=3.5              <=0.24            <=0.4   <=130  <=1000        <=10        <=30
-# C          <=6.9                    <=9.8               <=1.3            <=2.2   <=130  <=1200        <=20        <=34
-# D           >6.9                     >9.8               >1.30             >2.2    >130   >1200        <=30        <=50
-# E           >Inf                     >Inf                >Inf             >Inf    >260   >1200         >30         >50
-
+# 1    A         x<=1.0                   x<=1.5             x<=0.03          x<=0.05  x<=130   <=540         x<5        x<20
+# 2    B     x<1&x<=2.4             x>1.5&x<=3.5      x>0.03&x<=0.24    x>0.05&x<=0.4  x<=130 x<=1000  x>=5&x<=10 x>=20&x<=30
+# 3    C   x>2.4&x<=6.9             x>3.5&x<=9.8       x>0.24&x<=1.3     x>0.4&x<=2.2  x<=130 x<=1200 x>=10&x<=20 x>=20&x<=34
+# 4    D          x>6.9                    x>9.8              x>1.30            x>2.2   x>130  x>1200 x>=20&x<=30        x>34
+# 5    E          x>Inf                    x>Inf               x>Inf            x>Inf   x>260  x>1200        x>30        x>50
 
 # This is for setting the years you would like to undertake the assessment on for the National objectives Framework.
 # Add more years using comma seperation as needed 
@@ -91,14 +90,14 @@ for(i in i:length(uLAWAids)){
                          Max_Ammoniacal_Band   = factor(rep(NA,reps),levels = c("A","B","C","D")),
                          Ammonia_Toxicity_Band = factor(rep(NA,reps),levels = c("A","B","C","D")),
                          E_coli                = as.numeric(rep(NA,reps)),
-                         E_coli_band           = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         E_coli_band           = rep(NA,reps),
                          E_coli95              = as.numeric(rep(NA,reps)),
-                         E_coli95_band         = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         E_coli95_band         = rep(NA,reps),
                          E_coliRecHealth540    = as.numeric(rep(NA,reps)),
-                         E_coliRecHealth540band= factor(rep(NA,reps),levels = c("A","B","C","D","E")),
+                         E_coliRecHealth540band= rep(NA,reps),
                          E_coliRecHealth260    = as.numeric(rep(NA,reps)),
-                         E_coliRecHealth260band= factor(rep(NA,reps),levels = c("A","B","C","D","E")),
-                         E_coliSummaryband         = factor(rep(NA,reps),levels=c("A","B","C","D","E")),
+                         E_coliRecHealth260band= rep(NA,reps),
+                         E_coliSummaryband     = factor(rep(NA,reps),levels=c("A","B","C","D","E")),
                          stringsAsFactors = FALSE)
   
   
@@ -106,21 +105,18 @@ for(i in i:length(uLAWAids)){
   tonsite=rightSite[rightSite$Parameter=="TON",]
   
   #--------Median Nitrate--------------------------------------
-  Value <- tapply(tonsite$Value, 
-                  format(tonsite$Date, '%Y'), 
-                  na.rm=TRUE, quantile,prob=c(0.5),type=5)
+  Value <- tapply(tonsite$Value, format(tonsite$Date, '%Y'), na.rm=TRUE, quantile,prob=c(0.5),type=5)
   
   if(length(Value)!=0){
     #adding values into Com_NOF table
     Com_NOF$Median_Nitrate <- Value[match(Com_NOF$Year,names(Value))]
-    # Com_NOF$Median_Nitrate <- NOF_AddValue(Value, Com_NOF$Median_Nitrate, Com_NOF$Year)
     
     if(length(tonsite$Value)>=30){
       Com_NOF$Median_Nitrate[nrow(Com_NOF)] <- quantile(tonsite$Value,prob=c(0.5),type=5,na.rm=T)
     }
     #find the band which each value belong to
-    Com_NOF$Med_Nitrate_Band <-unlist(lapply(Com_NOF$Median_Nitrate,NOF_FindBand,bandColumn = NOFbandDefinitions$Median.Nitrate))
-    Com_NOF$Med_Nitrate_Band <- unlist(lapply(Com_NOF$Med_Nitrate_Band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+    Com_NOF$Med_Nitrate_Band <- unlist(lapply(Com_NOF$Median_Nitrate,NOF_FindBand,bandColumn = NOFbandDefinitions$Median.Nitrate))
+    Com_NOF$Med_Nitrate_Band <- unlist(lapply(Com_NOF$Med_Nitrate_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
     #-------95th percentage Nitrate--------------------------------------
     Value <- tapply(tonsite$Value, 
@@ -137,7 +133,7 @@ for(i in i:length(uLAWAids)){
     
     #find the band which each value belong to
     Com_NOF$Per_Nitrate_Band <- unlist(lapply(Com_NOF$Per_Nitrate,NOF_FindBand,bandColumn = NOFbandDefinitions$X95th.Percentile.Nitrate))
-    Com_NOF$Per_Nitrate_Band <- unlist(lapply(Com_NOF$Per_Nitrate_Band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+    Com_NOF$Per_Nitrate_Band <- unlist(lapply(Com_NOF$Per_Nitrate_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
     #---------------------Finding the band for Nitrate Toxicity --------------------------
     #The worse of the two nitrate bands
@@ -163,7 +159,7 @@ for(i in i:length(uLAWAids)){
     #find the band which each value belong to
     Com_NOF$Med_Ammoniacal_Band <- unlist(lapply(Com_NOF$Median_Ammoniacal,NOF_FindBand,
                                                  bandColumn=NOFbandDefinitions$Median.Ammoniacal.N)) 
-    Com_NOF$Med_Ammoniacal_Band <- unlist(lapply(Com_NOF$Med_Ammoniacal_Band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+    Com_NOF$Med_Ammoniacal_Band <- unlist(lapply(Com_NOF$Med_Ammoniacal_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
     #-------95th percentage Ammoniacal Nitrogen--------------------------------------
     Value <- tapply(nh4site$Value, format(nh4site$Date, '%Y'), na.rm=TRUE, max)
@@ -179,7 +175,7 @@ for(i in i:length(uLAWAids)){
     #find the band which each value belong to
     Com_NOF$Max_Ammoniacal_Band <-unlist(lapply(Com_NOF$Max_Ammoniacal,NOF_FindBand,
                                                 bandColumn=NOFbandDefinitions$Max.Ammoniacal.N)) 
-    Com_NOF$Max_Ammoniacal_Band <- unlist(lapply(Com_NOF$Max_Ammoniacal_Band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+    Com_NOF$Max_Ammoniacal_Band <- unlist(lapply(Com_NOF$Max_Ammoniacal_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
         #------------------Finding the band for Ammonia Toxicity-------------------------------
     Com_NOF$Ammonia_Toxicity_Band=apply(select(Com_NOF,Med_Ammoniacal_Band, Max_Ammoniacal_Band),1,max,na.rm=T)
@@ -204,12 +200,10 @@ for(i in i:length(uLAWAids)){
     Com_NOF$E_coliRecHealth260[nrow(Com_NOF)] <- sum(rawEcoli$value>260)/length(rawEcoli$value)*100
     
     Com_NOF$E_coliRecHealth540band <- unlist(lapply(Com_NOF$E_coliRecHealth540,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec540))
-    Com_NOF$E_coliRecHealth540band <- unlist(lapply(Com_NOF$E_coliRecHealth540band,
-                                                    FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+    cnEcRecHealth540band <- unlist(lapply(Com_NOF$E_coliRecHealth540band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
     Com_NOF$E_coliRecHealth260band <- unlist(lapply(Com_NOF$E_coliRecHealth260,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec260))
-    Com_NOF$E_coliRecHealth260band <- unlist(lapply(Com_NOF$E_coliRecHealth260band,
-                                                    FUN=function(x){min(unlist(strsplit(x,split = ',')))}))  
+    cnEcRecHealth260band <- unlist(lapply(Com_NOF$E_coliRecHealth260band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))  
   } #else they're left as NA
   
   #E coli median ####
@@ -223,7 +217,7 @@ for(i in i:length(uLAWAids)){
       #find the band which each value belong to
       Com_NOF$E_coli_band <- unlist(lapply(Com_NOF$E_coli,NOF_FindBand,bandColumn=NOFbandDefinitions$E..coli))
       #This median EColi can meet multiple bands
-      # Com_NOF$E_coli_band <- unlist(lapply(Com_NOF$E_coli_band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+      cnEc_band <- unlist(lapply(Com_NOF$E_coli_band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     }
     #else they're left as NA
 
@@ -233,18 +227,17 @@ for(i in i:length(uLAWAids)){
     if(length(Value)!=0){
       #adding values into Com_NOF table
       Com_NOF$E_coli95 <- Value[match(Com_NOF$Year,names(Value))]
-      # Com_NOF$E_coli95 <- NOF_AddValue(Value, Com_NOF$E_coli95, Com_NOF$Year)
       #calculate the overall 95 percentile
       Com_NOF$E_coli95[nrow(Com_NOF)] <- quantile(ecosite$Value,prob=c(0.95),type=5,na.rm=T)
       #find the band which each value belong to
       Com_NOF$E_coli95_band <- unlist(lapply(Com_NOF$E_coli95,NOF_FindBand,bandColumn=NOFbandDefinitions$Ecoli95))
       #Ecoli95 can meet multiple bands
-      # Com_NOF$E_coli95_band <- unlist(lapply(Com_NOF$E_coli95_band,FUN=function(x){min(unlist(strsplit(x,split = ',')))}))
+      cnEc95_band <- unlist(lapply(Com_NOF$E_coli95_band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     }  
   }
   #---------------------------------------------------------------------------------
-  Com_NOF$E_coliSummaryband = apply(select(Com_NOF,E_coli_band, E_coli95_band ,E_coliRecHealth540band,E_coliRecHealth260band),1,
-                                max)
+  #These contain the best case out of these scorings, the worst of which contributes.
+  Com_NOF$E_coliSummaryband = apply(cbind(pmax(cnEc_band,cnEc95_band,cnEcRecHealth540band,cnEcRecHealth260band)),1,max)
   
   Com_NOF$LawaSiteID <- uLAWAids[i]
   if(!exists("NOFSummaryTable")){
