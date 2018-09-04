@@ -107,7 +107,7 @@ polys <- readOGR(dsn="H:/ericg/16666LAWA/2018/eIDI-FW-Catchments.shp",
 pts@proj4string <- polys@proj4string
 
 
-
+which(is.na(sp::over(pts, sp::geometry(polys))))
 # Intersect points and polygons using user-defined function
 pip <- points.in.polys(pts,polys)  #Any warnings here means points need pulled in to inside catchments, as above
 

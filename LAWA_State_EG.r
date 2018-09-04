@@ -1,106 +1,21 @@
 rm(list=ls())
-
+# library(doBy)
 StartYear <- 2013
 EndYear <- 2017
 source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
 source("h:/ericg/16666LAWA/2018/LAWAFunctionsEG.R")
 
 
-#Load latest siteTable1, which is intersected with Catchment
-#NOTE  THIS IS NOT JUST THE SITE  TABLE!
-stbl=tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern="LAWA_Site_Table1.csv",recursive=T,full.names=T),1)
-catSiteTable <- read.csv(stbl,stringsAsFactors = F)
-rm(stbl)
-catSiteTable$SWQLanduse[catSiteTable$SWQLanduse=="Native"|catSiteTable$SWQLanduse=="Exotic"|catSiteTable$SWQLanduse=="Natural"] <- "Forest"
-catSiteTable$SiteID[catSiteTable$SiteID=="karapiro stm at hickey rd bridge - cambridge"] <- "karapiro stm at hickey rd bridge"
-catSiteTable$SiteID=trimws(catSiteTable$SiteID)
-catSiteTable$CouncilSiteID=trimws(catSiteTable$CouncilSiteID)
-catSiteTable$LawaSiteID=trimws(catSiteTable$LawaSiteID)
-catSiteTable$SWQAltitude=tolower(catSiteTable$SWQAltitude)
-catSiteTable$SWQLanduse=tolower(catSiteTable$SWQLanduse)
-catSiteTable$SWQFrequencyAll=tolower(catSiteTable$SWQFrequencyAll)
-catSiteTable$SWQFrequencyLast5=tolower(catSiteTable$SWQFrequencyLast5)
-catSiteTable$Region=tolower(catSiteTable$Region)
-catSiteTable$Agency=tolower(catSiteTable$Agency)
+load(file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
 
-save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
-
-
-for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  mfl=loadLatestCSVRiver(council)
-  while(grepl(pattern = '^X',x = names(mfl)[1])){
-    mfl=mfl[,-1]
-  }
-  names(mfl)[names(mfl)=='SWQFrequencyAll'] <- 'Frequency'
-
-
-  if(sum(is.na(mfl$Agency))>0){
-    cat(sum(is.na(mfl$Agency)),'non agency')
-    cat('\t',paste(collapse=', ',unique(mfl$SiteName[mfl$Agency==''|is.na(mfl$Agency)])))
-  }
-  if(sum(!tolower(mfl$CouncilSiteID)%in%tolower(catSiteTable$CouncilSiteID))>0){
-    cat('\t',sum(!unique(tolower(mfl$CouncilSiteID))%in%catSiteTable$CouncilSiteID),'not in site table\n')
-  }
-
-  eval(parse(text=paste0(council,'=mfl')))
-  rm(mfl)
-}
-
-niwa=read.csv('h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.csv',stringsAsFactors=F)
-if('SWQFrequencyAll'%in%names(niwa)){
-  names(niwa)[which(names(niwa)=='SWQFrequencyAll')] <- "Frequency"
-}
-if(!'accessDate'%in%names(niwa)){
-  niwa$accessDate = format(file.info("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/NIWAwqData.xml")$mtime,"%d-%b-%Y")
-}
-
-niwa <- niwa%>%select(names(ncc))  #Rearrange niwa columsn to match order of others
-
-niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]=niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]/1000
-
-
-boprc=boprc[-which(is.na(boprc$CouncilSiteID)),]
-
-wqdata=rbind.data.frame(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa,make.row.names = F)
-wqdata$SiteID=trimws(wqdata$SiteID)
-wqdata$CouncilSiteID=trimws(wqdata$CouncilSiteID)
-wqdata$LawaSiteID=trimws(wqdata$LawaSiteID)
-wqdata$SWQAltitude=tolower(wqdata$SWQAltitude)
-wqdata$SWQLanduse=tolower(wqdata$SWQLanduse)
-wqdata$Frequency=tolower(wqdata$Frequency)
-wqdata$SWQFrequencyLast5=tolower(wqdata$SWQFrequencyLast5)
-wqdata$Region=tolower(wqdata$Region)
-wqdata$Agency=tolower(wqdata$Agency)
-
-wqdata$CenType[wqdata$CenType%in%c("L","Left")] <- "Left"
-wqdata$CenType[wqdata$CenType%in%c("R","Right")] <- "Right"
-
-try(dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"))))
-write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
-rm(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,council)
 
 #Load the latest made (might need to check it works nicely across month folders) 
 if(!exists('wqdata')){
-  acwqdata=tail(dir(path = "H:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern = "AllCouncils.csv",recursive = T,full.names = T),1)
-  wqdata=read.csv(acwqdata,stringsAsFactors = F)
-  rm(acwqdata)
-}
-
-
-
-#Audit plots to allow comparison between agencies - check units consistency etc
-wqd=summaryBy(data=wqdata,formula=Value~LawaSiteID+parameter+Date,id=~Agency,FUN=median)
-wqds=spread(wqd,parameter,Value.median)
-params=unique(wqdata$parameter)
-for(param in 1:length(params)){
-  tiff(filename = paste0('h:/ericg/16666LAWA/2018/WaterQuality/QA/',names(wqds)[param+3],'.tif'),
-       width = 15,height=12,units='in',res=300,compression='lzw',type='cairo')
-  if(names(wqds)[param+3]!="PH"){
-    plot(as.factor(wqds$Agency[wqds[,param+3]>0]),wqds[wqds[,param+3]>0,param+3],ylab=names(wqds)[param+3],log='y')
-  }else{
-    plot(as.factor(wqds$Agency),wqds[,param+3],ylab=names(wqds)[param+3])
-  }
-  if(names(dev.cur())=='tiff'){dev.off()}
+  combowqdata=tail(dir(path = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported",pattern = "AllCouncils.csv",recursive = T,full.names = T),1)
+  wqdata=read.csv(combowqdata,stringsAsFactors = F)
+  rm(combowqdata)
+  write.csv(wqdata,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/RiverWQ_GraphData",
+                               format(Sys.time(),"%Hh%mm-%d%b%Y"),".csv"),row.names = F)
 }
 
 
@@ -109,7 +24,7 @@ wqdata <- left_join(wqdata,catSiteTable,by="LawaSiteID",suffix=c("",".y"))
 
 
 unique(wqdata$LawaSiteID[is.na(wqdata$SWQLanduse.y)])
-# "NRWQN-00012" "ES-00010"    "EBOP-00223"  "NRWQN-00035" "ECAN-10028"  "LAWA-00669"
+# "ES-00010"    "EBOP-00223"  "NRWQN-00035" "ECAN-10028"  "LAWA-00669"
 
 
 
@@ -131,12 +46,11 @@ for(i in 1:length(wqparam)){
   wqdata_med$Catchment=wqdata_med$LAWA_CATCH
   wqdata_med$Frequency=wqdata_med$SWQFrequencyLast5
 
-    wqdata_n <- summaryBy(formula=Value~SiteName+parameter+Date,
+  wqdata_n <- summaryBy(formula=Value~SiteName+parameter+Date,
                         id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
                           SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
                         data=wqdata_A, 
                         FUN=length,keep.names=T)
-  
   wqdata_c <- summaryBy(formula=Censored~SiteName+parameter+Date,
                         id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+TermReach+SWQLanduse+
                           SWQAltitude+LAWA_CATCH+CATCH_LBL+SWQFrequencyLast5+Comment+SWQuality,
@@ -233,7 +147,7 @@ save(lawadata,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata"
 names(sa) <-  c("AltitudeGroup","LanduseGroup","Region","Catchment","SiteName","LAWAID","Parameter","Q0","Q25","Q50","Q75","Q100","N","Scope")
 
 # filter sa to remove any LAWAIDS that are NA
-sa <- sa[!is.na(sa$LAWAID),]  #drops 45
+sa <- sa[!is.na(sa$LAWAID),]
 write.csv(sa,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/sa",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
 
 
@@ -263,6 +177,7 @@ cat("LAWA Water QUality State Analysis\nAssigning State Scores\n")
 # ' //        Each lowland site compared to lowland National medians
 
 
+#Now as of 2018 we're only doing it at site
 scope <- c("Site","Catchment","Region") 
 i=1
 # for(i in 1:3){
@@ -287,38 +202,43 @@ if(0){
   ss423 <- StateScore(sa,scope[i],"lowland","urban",wqparam,comparison=4)
 }
 
-if(i==1){
-  ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
-} else{
-  ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
-}
+# if(i==1){
+  ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412)
+  # ss <- rbind(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
+# } else{
+#   ss <- rbind(ss,ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
+# }
 rm(ss1,ss21,ss22,ss31,ss32,ss33,ss411,ss412,ss421,ss422,ss423)
 # }
 
 
-write.csv(ss,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
-
-
+write.csv(ss,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",StartYear,"-",EndYear,".csv"),row.names = F)
 
 cat("LAWA Water QUality State Analysis\nCompleted assigning State Scores\n")
 
 ss_csv <- read.csv(file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/state",StartYear,"-",EndYear,".csv",sep=""),header=TRUE,sep=",",quote = "\"")
 
-ss.1 <- subset(ss_csv,Scope=="Region")
-ss.1$Location <- ss.1$Region
-ss.2 <- subset(ss_csv,Scope=="Catchment")
-ss.2$Location <- ss.2$Catchment
+# ss.1 <- subset(ss_csv,Scope=="Region")
+# ss.1$Location <- ss.1$Region
+# ss.2 <- subset(ss_csv,Scope=="Catchment")
+# ss.2$Location <- ss.2$Catchment
 ss.3 <- subset(ss_csv,Scope=="Site")
 ss.3$Location <- ss.3$LAWAID
 
-ss.4 <- rbind.data.frame(ss.1,ss.2,ss.3)
+if(exists("ss.1")){
+  ss.4 <- rbind.data.frame(ss.1,ss.2,ss.3)
 # unique(ss.4$Location)
+}else{
+  ss.4 <- ss.3
+}
+ss.5 <- ss.4%>%select(Location,Parameter,AltitudeGroup,LanduseGroup,Q50,LAWAState,Region,Scope,StateGroup)
+ss.5 <- ss.5%>%rename(Median=Q50)
+# ss.5 <- ss.4[c(18,8,2,3,11,17,4,15,16)-1]  # Location, Parameter, Altitude, Landuse, Q50, LAWAState, Region, Scope, StateGroup
 
-ss.5 <- ss.4[c(18,8,2,3,11,17,4,15,16)-1]  # Location, Parameter, Altitude, Landuse, Q50, LAWAState, Region, Scope, StateGroup
 
 
-
-write.csv(ss.5,file=paste("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/LAWA_STATE_FINAL_",StartYear,"-",EndYear,".csv",sep=""),row.names = F)
+write.csv(ss.5,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/RiverWQ_STATE_",
+                           StartYear,"-",EndYear,"forITE",format(Sys.time(),"%Hh%mm-%d%b%Y"),".csv"),row.names = F)
 # lawadata_without_niwa <- subset(lawadata,Agency!="NIWA")
 # lawadata_q_without_niwa <- subset(lawadata_q,Agency!="NIWA")
 

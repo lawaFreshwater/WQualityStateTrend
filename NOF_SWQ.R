@@ -47,7 +47,7 @@ EndYear <- 2017
 StartYear <- EndYear - NOF_PERIOD + 1
 
 
-# loads lawadata dataframe
+# loads lawadata dataframe  from LAWA_State.r
 file.info(paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData"))$mtime
 
 load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData"))
@@ -55,7 +55,8 @@ load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYe
 lawadata$parameter=toupper(lawadata$parameter)
 # Subset to just have NH4
 # Date column in lawadata already POSIXct data type
-sub_swq <- lawadata%>%select(c("LawaSiteID","SiteName","Date","parameter","Value"))%>%filter(tolower(parameter)%in%tolower(c("NH4","TON","ECOLI","PH")))
+sub_swq <- lawadata%>%select(c("LawaSiteID","SiteName","Date","parameter","Value"))%>%
+  filter(tolower(parameter)%in%tolower(c("NH4","TON","ECOLI","PH")))
 #+++++++++++++++++++++++++++++ Dealing with data in dfswq table++++++++++++++++++++++++++++++++++++
 Name_swq<- unique(sub_swq$SiteName)
 uLAWAids <- unique(sub_swq$LawaSiteID)
@@ -79,25 +80,25 @@ for(i in i:length(uLAWAids)){
   rightSite=rightSite[!is.na(rightSite$Value),]
   # create table of compliance with proposed National Objectives Frameqork
   Com_NOF <- data.frame (Year = yr,
-                         Median_Nitrate        = as.numeric(rep(NA,reps)),
-                         Med_Nitrate_Band      = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         Per_Nitrate           = as.numeric(rep(NA,reps)),
-                         Per_Nitrate_Band      = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         Nitrate_Toxicity_Band = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         Median_Ammoniacal     = as.numeric(rep(NA,reps)),
-                         Med_Ammoniacal_Band   = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         Max_Ammoniacal        = as.numeric(rep(NA,reps)),
-                         Max_Ammoniacal_Band   = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         Ammonia_Toxicity_Band = factor(rep(NA,reps),levels = c("A","B","C","D")),
-                         E_coli                = as.numeric(rep(NA,reps)),
-                         E_coli_band           = rep(NA,reps),
-                         E_coli95              = as.numeric(rep(NA,reps)),
-                         E_coli95_band         = rep(NA,reps),
-                         E_coliRecHealth540    = as.numeric(rep(NA,reps)),
-                         E_coliRecHealth540band= rep(NA,reps),
-                         E_coliRecHealth260    = as.numeric(rep(NA,reps)),
-                         E_coliRecHealth260band= rep(NA,reps),
-                         E_coliSummaryband     = factor(rep(NA,reps),levels=c("A","B","C","D","E")),
+                         Median_Nitrate           = as.numeric(rep(NA,reps)),
+                         Med_Nitrate_Band         = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         Per_Nitrate              = as.numeric(rep(NA,reps)),
+                         Per_Nitrate_Band         = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         Nitrate_Toxicity_Band    = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         Median_Ammoniacal        = as.numeric(rep(NA,reps)),
+                         Med_Ammoniacal_Band      = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         Max_Ammoniacal           = as.numeric(rep(NA,reps)),
+                         Max_Ammoniacal_Band      = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         Ammonia_Toxicity_Band    = factor(rep(NA,reps),levels = c("A","B","C","D")),
+                         E_coli                   = as.numeric(rep(NA,reps)),
+                         E_coli_band              = rep(NA,reps),
+                         E_coli95                 = as.numeric(rep(NA,reps)),
+                         E_coli95_band            = rep(NA,reps),
+                         E_coliRecHealth540       = as.numeric(rep(NA,reps)),
+                         E_coliRecHealth540_Band  = rep(NA,reps),
+                         E_coliRecHealth260       = as.numeric(rep(NA,reps)),
+                         E_coliRecHealth260_Band  = rep(NA,reps),
+                         E_coliSummaryband        = factor(rep(NA,reps),levels=c("A","B","C","D","E")),
                          stringsAsFactors = FALSE)
   
   
@@ -269,59 +270,63 @@ load(file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData") #
 NOFSummaryTable$CouncilSiteID=catSiteTable$CouncilSiteID[match(NOFSummaryTable$LawaSiteID,catSiteTable$LawaSiteID)]
 NOFSummaryTable$SiteID=catSiteTable$SiteID[match(NOFSummaryTable$LawaSiteID,catSiteTable$LawaSiteID)]
 NOFSummaryTable <- NOFSummaryTable%>%select(LawaSiteID:SiteID,Year:E_coliSummaryband)
-write.csv(NOFSummaryTable, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable.csv",row.names=F)
+write.csv(NOFSummaryTable, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable.csv"),row.names=F)
 
 NOFSummaryTable <- merge(NOFSummaryTable, catSiteTable) 
 NOFSummaryTableSubset <- NOFSummaryTable[NOFSummaryTable$Year=="Overall",]
 NOFSummaryTableSubset <- NOFSummaryTableSubset%>%select("LawaSiteID","CouncilSiteID","SiteID",
                                                         Year:E_coliSummaryband,
                                                         "SWQAltitude","SWQLanduse","Agency")
-write.csv(NOFSummaryTableSubset, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable_Overall.csv")
+write.csv(NOFSummaryTableSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable_Overall.csv"),row.names=F)
 
 # Reshape Output
 require(reshape2)
-NOFSummaryTableLong <- melt(data=NOFSummaryTable,id.vars=c("LawaSiteID","CouncilSiteID","SiteID","SWQAltitude","SWQLanduse","Agency","Year"))
-write.csv(NOFSummaryTableLong, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF Summary Table Long.csv")
+NOFSummaryTableLong <- melt(data=NOFSummaryTable%>%select(-Comment),
+                            id.vars=c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","Region",
+                                      "SWQAltitude","SWQLanduse","SWQuality","SWQFrequencyAll","SWQFrequencyLast5","TermReach",
+                                      "accessDate","LAWA_CATCH","CATCH_LBL","CatchID","CatchType","SOE_FW_RIV"))
+write.csv(NOFSummaryTableLong, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTableLong.csv"),row.names=F)
 
 NOFSummaryTableLongSubset <- NOFSummaryTableLong[NOFSummaryTableLong$Year=="Overall",]
 NOFSummaryTableLongSubset <- NOFSummaryTableLongSubset[!is.na(NOFSummaryTableLongSubset$LawaSiteID),]
-write.csv(NOFSummaryTableLongSubset, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018.csv")
+write.csv(NOFSummaryTableLongSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018.csv"),row.names=F)
 
 
 
 #Round them off.  For web display?
-nofRound <- NOFSummaryTableLongSubset
-vars<-as.character(unique(NOFSummaryTableLongSubset$variable))
-vars <- vars[order(vars)]
-#vars
-# [1] "accessDate"             "Ammonia_Toxicity_Band"  "CATCH_LBL"              "CatchID"                "CatchType"             
-# [6] "Comment"                "E_coli"                 "E_coli_band"            "E_coli95"               "E_coli95_band"         
-# [11] "E_coliRecHealth260"     "E_coliRecHealth260band" "E_coliRecHealth540"     "E_coliRecHealth540band" "E_coliSummaryband"         
-# [16] "LAWA_CATCH"             "Max_Ammoniacal"         "Max_Ammoniacal_Band"    "Med_Ammoniacal_Band"    "Med_Nitrate_Band"      
-# [21] "Median_Ammoniacal"      "Median_Nitrate"         "Nitrate_Toxicity_Band"  "Per_Nitrate"            "Per_Nitrate_Band"      
-# [26] "Region"                 "SOE_FW_RIV"             "SWQFrequencyAll"        "SWQFrequencyLast5"      "SWQuality"             
-# [31] "TermReach"     
+NOFRound <- NOFSummaryTableLongSubset
+NOFRound$variable <- as.character(NOFRound$variable)
 
-nofRound$variable <- as.character(nofRound$variable)
+variables<-as.character(unique(NOFSummaryTableLongSubset$variable))
+variables <- variables[order(variables)]
+# 1] "Ammonia_Toxicity_Band"  "E_coli"                 "E_coli_band"            "E_coli95"               "E_coli95_band"         
+# [6] "E_coliRecHealth260"     "E_coliRecHealth260band" "E_coliRecHealth540"     "E_coliRecHealth540band" "E_coliSummaryband"     
+# [11] "Max_Ammoniacal"         "Max_Ammoniacal_Band"    "Med_Ammoniacal_Band"    "Med_Nitrate_Band"       "Median_Ammoniacal"     
+# [16] "Median_Nitrate"         "Nitrate_Toxicity_Band"  "Per_Nitrate"            "Per_Nitrate_Band"       "SWQFrequencyAll"       
+# [21] "SWQFrequencyLast5"     
+
 # Decimal places for variables
-#dp <- c(4,0,NA,NA,NA,4,NA,4,NA,4)
-dp <- rep(NA,length(vars))
-dp[vars%in%c("E_coli", "E_coli95", "E_coliRecHealth260", "E_coliRecHealth540")] <- 0
-dp[vars%in%c("Max_Ammoniacal", "Median_Ammoniacal", "Median_Nitrate", "Per_Nitrate")] <- 4
+dp <- rep(NA,length(variables))
+dp[variables%in%c("E_coli", "E_coli95", "E_coliRecHealth260", "E_coliRecHealth540")] <- 0
+dp[variables%in%c("Max_Ammoniacal", "Median_Ammoniacal", "Median_Nitrate", "Per_Nitrate")] <- 4
 
-# p <- c("Median_Ecoli","Median_Ecoli","Per_Ecoli","Per_Ecoli","Median_Ammoniacal","Median_Nitrate","Max_AmmoniacalN","Max_AmmoniacalN","Median_Ammoniacal","Median_Nitrate","Per_Nitrate","Per_Nitrate")
-p=vars #EG: I dont see why this should be different!?
+parameterInvolved <- variables
+parameterInvolved <- gsub(pattern = "Band",replacement = "",x = parameterInvolved)
+parameterInvolved <- gsub(pattern = "band",replacement = "",x = parameterInvolved)
+parameterInvolved <- gsub(pattern = "_$",replacement = "",x = parameterInvolved)
+parameterInvolved <- gsub(pattern = "Med_",replacement = "Median_",x = parameterInvolved)
+parameterInvolved <- gsub(pattern = "E_coli$",replacement = "E_coliMedian",x = parameterInvolved)
 
-desc = rep('value',length(vars))
-desc[grepl(vars,pattern = 'band',ignore.case = T)] <- 'band'
-desc[vars%in%c("Agency", "SWQAltitude","SWQLanduse","SiteID","CATCH_LBL","CatchID",
+desc = rep('value',length(variables))
+desc[grepl(variables,pattern = 'band',ignore.case = T)] <- 'band'
+desc[variables%in%c("Agency", "SWQAltitude","SWQLanduse","SiteID","CATCH_LBL","CatchID",
                "CatchType","Comment","LAWA_CATCH","Region","SOE_FW_RIV",
                "SWQFrequencyAll","SWQFrequencyLast5","SWQuality","TermReach")] <- 'meta'
 
-dfp <- data.frame(vars,p,desc,stringsAsFactors=FALSE,row.names=NULL)
-nofRound <- merge(nofRound,dfp,by.x="variable",by.y="vars",all=TRUE)
+dfp <- data.frame(variables,parameterInvolved,desc,dp,stringsAsFactors=FALSE,row.names=NULL)
+NOFRound <- merge(NOFRound,dfp,by.x="variable",by.y="variables",all=TRUE)
 
-
+rm(variables,parameterInvolved,desc,dp)
 # POST PROCESSING NOF RESULTS
 # Round values to appropriate DP's
 
@@ -335,33 +340,32 @@ nofRound <- merge(nofRound,dfp,by.x="variable",by.y="vars",all=TRUE)
 # If I was smarter, I would redefine the round function
 
 
-for(i in 1:length(vars)){
-  if(!is.na(dp[i])){
-    nofRound$value[nofRound$variable==vars[i]] <- as.character(as.numeric(nofRound$value[nofRound$variable==vars[i]]) + 0.000001)
-    nofRound$value[nofRound$variable==vars[i]] <- as.character(round(as.numeric(nofRound$value[nofRound$variable==vars[i]]),digits = dp[i]))
-  } else {
-    cat('meta column\t')
+for(i in 1:length(dfp$variables)){
+  if(!is.na(dfp$dp[i])){
+    NOFRound$value[NOFRound$variable==dfp$variables[i]] <- as.character(as.numeric(NOFRound$value[NOFRound$variable==dfp$variables[i]]) + 0.000001)
+    NOFRound$value[NOFRound$variable==dfp$variables[i]] <- as.character(round(as.numeric(NOFRound$value[NOFRound$variable==dfp$variables[i]]),digits = dfp$dp[i]))
   }
 }
 
 
-nofRound$value[is.na(nofRound$value)] <- "NA"
-nofRound <- nofRound[order(nofRound$LawaSiteID,nofRound$p,nofRound$desc),]
-write.csv(nofRound, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018_Rounded_NAs.csv")
+NOFRound$value[is.na(NOFRound$value)] <- "NA"
+NOFRound <- NOFRound[order(NOFRound$LawaSiteID,NOFRound$parameterInvolved,NOFRound$desc),]
+write.csv(NOFRound, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018_Rounded_NAs.csv")
 
-# Transform (tidyr::spread) data in nofRound to the following form to supply to IT Effect
+# Transform (tidyr::spread) data in NOFRound to the following form to supply to IT Effect
 # LawaSiteID,SiteName,Year,Parameter,value,Band
 # ARC-00001,44603,Overall,Max_AmmoniacalN,NA,NA
 # ARC-00001,44603,Overall,Median_Ammoniacal,NA,NA
 # ARC-00001,44603,Overall,Median_Ecoli,28,A
 # ARC-00001,44603,Overall,Median_Nitrate,0.0079,A
 
-nof_value <- nofRound[nofRound$desc=="value",c(2,3,4,8,1,9)]
-names(nof_value) <- c("LawaSiteID","CouncilSiteID","SiteID","Year","Parameter","Value")
-nof_band  <- nofRound[nofRound$desc=="band",c(2,3,4,8,1,9)]
-names(nof_band) <- c("LawaSiteID","CouncilSiteID","SiteID","Year","Parameter","Band")
+NOF_value <- NOFRound%>%filter(desc=="value")%>%select("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","variable","value","parameterInvolved")
+names(NOF_value) <- c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","Parameter","Value",'parameterInvolved')
+NOF_band  <- NOFRound%>%filter(desc=="band")%>%select("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","variable","value","parameterInvolved")
+names(NOF_band) <- c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","BandingRule","BandScore",'parameterInvolved')
 
-nof_wide <- dplyr::left_join(nof_value,nof_band,by = c("LawaSiteID", "Year", "Parameter"))
-nof_wide <- unique(nof_wide)
+NOF_wide <- dplyr::left_join(NOF_band,NOF_value,by = c("LawaSiteID","CouncilSiteID","SiteID","Agency", "Year", "parameterInvolved"))
+NOF_wide <- unique(NOF_wide)
 
-write.csv(nof_wide, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018_ITEFFECT.csv")
+write.csv(NOF_wide, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/RiverWQ_NOF_forITE_",
+                                  format(Sys.time(),"%Hh%mm-%d%b%Y"),".csv"),row.names = F)
