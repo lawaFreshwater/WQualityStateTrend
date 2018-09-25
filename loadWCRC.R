@@ -51,7 +51,7 @@ Measurements <- as.vector(Measurements)
 
 #function to create xml file from url. 
 ld <- function(url){
-  str<- tempfile(pattern = "file", tmpdir = tempdir())
+  str<- tempfile(pattern = "tempwcrc", tmpdir = tempdir())
   (download.file(url,destfile=str,method="wininet",quiet=T))
   xmlfile <- xmlParse(file = str)
   unlink(str)
