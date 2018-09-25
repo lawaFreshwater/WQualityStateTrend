@@ -1,6 +1,6 @@
 rm(list=ls())
 library(tidyverse)
-source("h:/ericg/16666LAWA/LWPTrends_v1809v2/LWPTrends_v1809.R")
+source("h:/ericg/16666LAWA/LWPTrends_v1811_beta.R")
 source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
 try(dir.create(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"))))
 
@@ -57,9 +57,9 @@ usites=unique(wqdatafor10$LawaSiteID)
 uMeasures=unique(wqdatafor10$parameter)
 trendTable10=structure(list(LawaSiteID=NA,parameter=NA,
                             Observations = NA_integer_, KWstat = NA_real_,pvalue = NA_real_,
-                            nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_, 
-                            Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA, 
-                            TrendDirection = NA, Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
+                            nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_,Probability=NA_real_,
+                             Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA, 
+                             TrendDirection = NA, Sen_Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
 nMax=length(table(wqdatafor10$LawaSiteID,wqdatafor10$parameter)[table(wqdatafor10$LawaSiteID,wqdatafor10$parameter)>0])
 passCriteria10=data.frame(LawaSiteID=rep('',nMax),param=rep('',nMax),repFreq=rep('',nMax),
                           nFirstYear=rep(0,nMax),nLastYear=rep(0,nMax),
@@ -81,7 +81,7 @@ for(usite in usite:length(usites)){
     subSubDat=subDat%>%filter(subDat$parameter==uMeasures[uparam])
     if(dim(subSubDat)[1]>0){
       SSD_med <- summaryBy(formula=Value~LawaSiteID+monYear,
-                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season,#+NewValues,
+                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                            data=subSubDat, 
                            FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
       
@@ -108,12 +108,7 @@ for(usite in usite:length(usites)){
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
           (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
-          (ss <- try(SenSlopeEG(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          if('try-error'%in%attr(ss,'class')){
-            cat('\n',usite,uparam,'\n')
-            stop()
-            (ss <- try(SenSlope(HiCensor=F,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          }
+          (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
         trendTable10=rbind(trendTable10,newRow)
@@ -158,10 +153,10 @@ wqdatafor5=wqdata%>%filter(Year>=startYear5 & Year <= EndYear & parameter!="PH")
 usites=unique(wqdatafor5$LawaSiteID)
 uMeasures=unique(wqdatafor5$parameter)
 trendTable5=structure(list(LawaSiteID=NA,parameter=NA,
-                           Observations = NA_integer_, KWstat = NA_real_,pvalue = NA_real_,
-                           nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_,
-                           Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA,
-                           TrendDirection = NA, Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
+                           Observations = NA_integer_, KWstat = NA_real_,pvalue = NA_real_,Probability = NA_real_,
+                            nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_,
+                            Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA,
+                            TrendDirection = NA, Sen_Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
 nMax=length(table(wqdatafor5$LawaSiteID,wqdatafor5$parameter)[table(wqdatafor5$LawaSiteID,wqdatafor5$parameter)>0])
 passCriteria5=data.frame(LawaSiteID=rep('',nMax),param=rep('',nMax),repFreq=rep('',nMax),
                           nFirstYear=rep(0,nMax),nLastYear=rep(0,nMax),
@@ -180,10 +175,8 @@ for(usite in 1:length(usites)){
   for(uparam in 1:length(uMeasures)){
     subSubDat=subDat%>%filter(subDat$parameter==uMeasures[uparam])
     if(dim(subSubDat)[1]>0){
-      # SiteID+CouncilSiteID+Agency+Region+SWQLanduse+
-      #   SWQAltitude+SWQFrequencyLast5+SWQuality+
       SSD_med <- summaryBy(formula=Value~LawaSiteID+monYear,
-                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season+NewValues,
+                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                            data=subSubDat, 
                            FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
       #Censoring fails with tiny machine rounding errors
@@ -208,10 +201,7 @@ for(usite in 1:length(usites)){
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
           (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
-          (ss <- try(SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          if('try-error'%in%attr(ss,'class')){
-            (ss <- try(SenSlope(HiCensor=F,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          }
+          (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
         trendTable5=rbind(trendTable5,newRow)
@@ -240,10 +230,10 @@ wqdataforQ10$quYear=paste0(wqdataforQ10$Qtr,wqdataforQ10$Year)
 usites=unique(wqdataforQ10$LawaSiteID)
 uMeasures=unique(wqdataforQ10$parameter)
 trendTableQ10=structure(list(LawaSiteID=NA,parameter=NA,
-                            Observations = NA_integer_, KWstat = NA_real_,pvalue = NA_real_,
-                            nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_, 
-                            Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA, 
-                            TrendDirection = NA, Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
+                            Observations = NA_integer_, KWstat = NA_real_,pvalue = NA_real_,Probability = NA_real_,
+                             nObs = NA_integer_, S = NA_real_, VarS = NA_real_,D = NA_real_, tau = NA_real_, Z = NA_real_, p = NA_real_, 
+                             Median = NA_real_, VarS = NA_real_, AnnualSenSlope = NA_real_, Intercept = NA_real_, Lci = NA_real_, Uci = NA_real_, TrendCategory = NA, 
+                             TrendDirection = NA, Sen_Probability = NA_real_, Probabilitymax = NA_real_, Probabilitymin = NA_real_, Percent.annual.change = NA_real_), class = "data.frame")
 nMax=length(table(wqdataforQ10$LawaSiteID,wqdataforQ10$parameter)[table(wqdataforQ10$LawaSiteID,wqdataforQ10$parameter)>0])
 passCriteriaQ10=data.frame(LawaSiteID=rep('',nMax),param=rep('',nMax),repFreq=rep('',nMax),
                           nFirstYear=rep(0,nMax),nLastYear=rep(0,nMax),
@@ -265,11 +255,11 @@ for(usite in 1:length(usites)){
     subSubDat=subDat%>%filter(subDat$parameter==uMeasures[uparam])
     if(dim(subSubDat)[1]>0){
       SSD_med <- summaryBy(formula=Value~LawaSiteID+quYear,
-                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season+NewValues,
+                           id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                            data=subSubDat, 
                            FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
       #Censoring fails with tiny machine rounding errors
-      SSD_med$Value=round(SSD_med$Value*10^6)/10^6
+       SSD_med$Value=round(SSD_med$Value*10^6)/10^6
       rm(subSubDat)
       firstYear=length(which(SSD_med$Year==startYear10))
       lastYear=length(which(SSD_med$Year==EndYear))
@@ -286,14 +276,11 @@ for(usite in 1:length(usites)){
         (st <- SeasonalityTest(x = SSD_med,main=uMeasures[uparam],ValuesToUse = "Value",ValuesToUseforMedian="Value",do.plot =F))
         if(!is.na(st$pvalue)&&st$pvalue<0.05){
           sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",doPlot = F)
-          sss <- SeasonalSenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)
+           sss <- SeasonalSenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
           (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
-          (ss <- try(SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          if('try-error'%in%attr(ss,'class')){
-            (ss <- try(SenSlope(HiCensor=F,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)))
-          }
+          (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
         trendTableQ10=rbind(trendTableQ10,newRow)
@@ -431,9 +418,9 @@ combTrend$ConfCat=factor(combTrend$ConfCat,levels=rev(c("Very likely improving",
 trendTable5$period=5
 trendTable10$period=10
 trendTableQ10$period=10
-trendTable5=trendTable5[,-which(names(trendTable5)=="VarS")[2]]
-trendTable10=trendTable10[,-which(names(trendTable10)=="VarS")[2]]
-trendTableQ10=trendTableQ10[,-which(names(trendTableQ10)=="VarS")[2]]
+# trendTable5=trendTable5[,-which(names(trendTable5)=="VarS")[2]]
+# trendTable10=trendTable10[,-which(names(trendTable10)=="VarS")[2]]
+# trendTableQ10=trendTableQ10[,-which(names(trendTableQ10)=="VarS")[2]]
 combTrend=combTrend[,-which(names(combTrend)=="VarS")[2]]
 combTrend$period=10
 combTrend$period[combTrend$standard=='silver']=5
@@ -454,7 +441,7 @@ write.csv(combTrendExport,paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysi
                          format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
 rm(combTrendExport)
 
-savePlott=T
+savePlott=F
 usites=unique(combTrend$LawaSiteID)
 uMeasures=unique(combTrend$parameter)%>%as.character
 for(uparam in seq_along(uMeasures)){
@@ -478,11 +465,11 @@ for(uparam in seq_along(uMeasures)){
                          id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                          data=subwq[theseDeg,], 
                          FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)")))
-    Deg_ind <- eval(parse(text=paste0("summaryBy(formula=",uMeasures[uparam],"~LawaSiteID+monYear,
+    Ind_med <- eval(parse(text=paste0("summaryBy(formula=",uMeasures[uparam],"~LawaSiteID+monYear,
                          id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                                       data=subwq[theseInd,], 
                                       FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)")))
-    Deg_imp <- eval(parse(text=paste0("summaryBy(formula=",uMeasures[uparam],"~LawaSiteID+monYear,
+    Imp_med <- eval(parse(text=paste0("summaryBy(formula=",uMeasures[uparam],"~LawaSiteID+monYear,
                          id=~Censored+CenType+myDate+Year+Month+Qtr+Season,
                                       data=subwq[theseImp,], 
                                       FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)")))
@@ -495,29 +482,29 @@ for(uparam in seq_along(uMeasures)){
       SenSlope(HiCensor=T,x = Deg_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }
     
-    st <- SeasonalityTest(x = Deg_ind,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
+    st <- SeasonalityTest(x = Ind_med,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
     if(!is.na(st$pvalue)&&st$pvalue<0.05){
-      SeasonalKendall(x = Deg_ind,ValuesToUse = uMeasures[uparam],doPlot = F)
-      SeasonalSenSlope(HiCensor=T,x = Deg_ind,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
+      SeasonalKendall(x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot = F)
+      SeasonalSenSlope(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }else{
-      MannKendall(x = Deg_ind,ValuesToUse = uMeasures[uparam],doPlot=F)
-      SenSlope(HiCensor=T,x = Deg_ind,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
+      MannKendall(x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot=F)
+      SenSlope(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }
     
-    st <- SeasonalityTest(x = Deg_imp,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
+    st <- SeasonalityTest(x = Imp_med,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
     if(!is.na(st$pvalue)&&st$pvalue<0.05){
-      SeasonalKendall(x = Deg_imp,ValuesToUse = uMeasures[uparam],doPlot = F)
-      if(is.na(SeasonalSenSlope(HiCensor=T,x = Deg_imp,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])$Probability)){
-        SenSlope(HiCensor=T,x = Deg_imp,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
+      SeasonalKendall(x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot = F)
+      if(is.na(SeasonalSenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])$Probability)){
+        SenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
       }
     }else{
-      MannKendall(x = Deg_imp,ValuesToUse = uMeasures[uparam],doPlot=F)
-      SenSlope(HiCensor=T,x = Deg_imp,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
+      MannKendall(x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot=F)
+      SenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
     }
     if(names(dev.cur())=='tiff'){dev.off()}
     rm(theseDeg,theseImp,theseInd)
-  
-  rm(worstDeg,bestImp,theseInd)
+  rm(Deg_med,Ind_med,Imp_med)
+  rm(worstDeg,bestImp,leastKnown)
 }
 
  
