@@ -49,7 +49,7 @@ lawaset=c("NH4", "TURB", "BDISC",  "DRP",  "ECOLI",  "TN",  "TP",  "TON",  "PH")
 #                                 *****
 ##############################################################################
 for(agency in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  xml2csvRiver(agency = agency)
+  xml2csvRiver(agency = agency,quiet = F,reportCensor = F,reportVars = T)
 }
 ##############################################################################
 #                                 *****
@@ -60,7 +60,7 @@ for(agency in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","
 library(lubridate)
 nms=data.frame(agency=NULL,xmlAge=NULL,var=NULL,earliest=NULL,latest=NULL,nMeas=NULL,nSite=NULL,meanMeas=NULL,maxMeas=NULL,minMeas=NULL,nNA=NULL)
 for(agency in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  xmlAge = checkXMLage(agency)
+  xmlAge = checkXMLageRiver(agency)
   mfl=loadLatestCSVRiver(agency)
   if(!is.null(mfl)){
     newRows=data.frame(agency=rep(agency,length(unique(mfl$parameter))),
@@ -129,39 +129,16 @@ for(agency in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","
 }
 
 
+
+
+
 #Build the combo
-stbl=tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern="LAWA_Site_Table1.csv",recursive=T,full.names=T),1)
-catSiteTable <- read.csv(stbl,stringsAsFactors = F)
-rm(stbl)
-
-#Load latest siteTable1, which is intersected with Catchment
-#NOTE  THIS IS NOT JUST THE SITE  TABLE!
-stbl=tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern="LAWA_Site_Table1.csv",recursive=T,full.names=T),1)
-catSiteTable <- read.csv(stbl,stringsAsFactors = F)
-rm(stbl)
-catSiteTable$SWQLanduse[catSiteTable$SWQLanduse=="Native"|catSiteTable$SWQLanduse=="Exotic"|catSiteTable$SWQLanduse=="Natural"] <- "Forest"
-catSiteTable$SiteID[catSiteTable$SiteID=="karapiro stm at hickey rd bridge - cambridge"] <- "karapiro stm at hickey rd bridge"
-catSiteTable$SiteID=trimws(catSiteTable$SiteID)
-catSiteTable$CouncilSiteID=trimws(catSiteTable$CouncilSiteID)
-catSiteTable$LawaSiteID=trimws(catSiteTable$LawaSiteID)
-catSiteTable$SWQAltitude=tolower(catSiteTable$SWQAltitude)
-catSiteTable$SWQLanduse=tolower(catSiteTable$SWQLanduse)
-catSiteTable$SWQFrequencyAll=tolower(catSiteTable$SWQFrequencyAll)
-catSiteTable$SWQFrequencyLast5=tolower(catSiteTable$SWQFrequencyLast5)
-catSiteTable$Region=tolower(catSiteTable$Region)
-catSiteTable$Agency=tolower(catSiteTable$Agency)
-
-save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
-
-
 for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  mfl=loadLatestCSVRiver(council)
+  mfl=loadLatestCSVRiver(council,maxHistory = 30)
   while(grepl(pattern = '^X',x = names(mfl)[1])){
     mfl=mfl[,-1]
   }
   names(mfl)[names(mfl)=='SWQFrequencyAll'] <- 'Frequency'
-  
-  
   if(sum(is.na(mfl$Agency))>0){
     cat(sum(is.na(mfl$Agency)),'non agency')
     cat('\t',paste(collapse=', ',unique(mfl$SiteName[mfl$Agency==''|is.na(mfl$Agency)])))
@@ -169,7 +146,6 @@ for(council in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc",
   if(sum(!tolower(mfl$CouncilSiteID)%in%tolower(catSiteTable$CouncilSiteID))>0){
     cat('\t',sum(!unique(tolower(mfl$CouncilSiteID))%in%catSiteTable$CouncilSiteID),'not in site table\n')
   }
-  
   eval(parse(text=paste0(council,'=mfl')))
   rm(mfl)
 }
@@ -189,7 +165,8 @@ niwa$Value[niwa$parameter%in%c("NH4","DRP","TN","TP","TON")]=niwa$Value[niwa$par
 
 boprc=boprc[-which(is.na(boprc$CouncilSiteID)),]
 
-wqdata=rbind.data.frame(boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa,make.row.names = F)
+wqdata=rbind.data.frame(ac,boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,niwa,make.row.names = F)
+wqdata=unique(wqdata)
 wqdata$SiteID=trimws(wqdata$SiteID)
 wqdata$CouncilSiteID=trimws(wqdata$CouncilSiteID)
 wqdata$LawaSiteID=trimws(wqdata$LawaSiteID)
@@ -202,6 +179,14 @@ wqdata$Agency=tolower(wqdata$Agency)
 
 wqdata$CenType[wqdata$CenType%in%c("L","Left")] <- "Left"
 wqdata$CenType[wqdata$CenType%in%c("R","Right")] <- "Right"
+
+#Re-apply the metadata from the site table, by LawaID.  Some were getting missed somehow.
+table(unique(tolower(wqdata$SiteName))%in%tolower(siteTable$CouncilSiteID))
+table(unique(tolower(wqdata$LawaSiteID))%in%tolower(siteTable$LawaSiteID))
+wqdata=wqdata[!is.na(wqdata$LawaSiteID),1:10]
+wqdata=left_join(x=wqdata,y=siteTable[,-c(1,3)],by="LawaSiteID")
+wqdata$SWQAltitude=tolower(wqdata$SWQAltitude)
+wqdata$SWQLanduse=tolower(wqdata$SWQLanduse)
 
 try(dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"))))
 write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
