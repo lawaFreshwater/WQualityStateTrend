@@ -664,10 +664,10 @@ StateScore <- function(df,scopeIn,altitude,landuse,wqparam,comparison){
                               tolower(LanduseGroup)==landuse &
                               tolower(Scope)=="nz" &
                               tolower(Parameter)==tolower(wqparam[i]))  
-    }
+    
     # Region|Upland|Forest, Catchment|Upland|Forest, Site|Upland|Forest     Region|Upland|Rural, Catchment|Upland|Rural, Site|Upland|Rural     Region|Upland|Urban, Catchment|Upland|Urban, Site|Upland|Urban
     # Region|Lowland|Forest, Catchment|Lowland|Forest, Site|Lowland|Forest     Region|Lowland|Rural, Catchment|Lowland|Rural, Site|Lowland|Rural     Region|Lowland|Urban, Catchment|Lowland|Urban, Site|Lowland|Urban 
-    else if(comparison==4){
+   } else if(comparison==4){
       df_scope           <- subset(df, tolower(Scope)==scopeIn &
                                      tolower(AltitudeGroup)==altitude &
                                      tolower(LanduseGroup)==landuse &
@@ -1645,6 +1645,41 @@ rightCensored <- function(x) {
   
   return(myData)
 }
+
+rightImpute <- function(x,centype,var){
+  #EG September 2018
+  #returns imputed vlaues, rather than entire dataset
+  #based on above function 'rightCensored'
+  if(var!= "BDISC") {     # if this is not Clarity ( NB  E. coli have "al" values but very low numbers - not enough to fit model.
+    x[centype='Right']=x[centype='Right']*1.1
+    return(x)
+  }
+  if((sum(centype=='Right')/length(x))<0.05){
+    x[centype=='Right']=x[centype=='Right']*1.1
+    return(x)
+  }
+  #This catches 'default' case of actually doing the imputation
+  survStat=centype!='Right'
+  survObj = Surv(x,survStat)
+  survMod = lawaSurvReg(survObj~1,dist='weibull',init=NULL,control,scale=0,parms=NULL,model=FALSE,x=FALSE,y=TRUE,robust=FALSE,score=FALSE)
+  RScale <- as.numeric(exp(survMod$coefficients))
+  RShape <- 1/survMod$scale
+  SynthDist <- sort(rweibull(10000,shape=RShape,scale=RScale))
+  if(length(SynthDist)==0){
+    i2Values <- x
+  }else{
+    i2Values <-  unlist(lapply(1:length(myData$Value), function(x) {
+      if(myData$dflag[x] != "al") {
+        Impute <- myData$i1Values[x]
+      } else {
+        myVal <- myData$converted_values[x]
+        Impute <- resample(SynthDist[SynthDist > myVal], size=1)
+      }
+      return(Impute)}))
+  }
+  return(i2Values)
+}
+
 
 # addJitter <- function(x, myValues="i2Values")
 #Impute.tied <-  function(x) {     
