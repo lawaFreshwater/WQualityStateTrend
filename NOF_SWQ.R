@@ -12,6 +12,10 @@
 #  Horizons Regional Council
 #===================================================================================================
 
+#Test does this need doing?
+file.info("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018_Rounded_NAs.csv")$mtime<
+  file.info(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"))$mtime
+
 
 rm(list = ls())
 library(tidyr)
@@ -46,14 +50,12 @@ reps  <-length(yr)
 EndYear <- 2017
 StartYear <- EndYear - NOF_PERIOD + 1
 
+# loads lawadata dataframe  from LAWA_State.r  - has altered values from censoring, and calculated medians
 
-# loads lawadata dataframe  from LAWA_State.r
-file.info(paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData"))$mtime
-
-load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawadata",StartYear,"-",EndYear,".RData"))
+load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"))
 
 lawadata$parameter=toupper(lawadata$parameter)
-# Subset to just have NH4
+# Subset to just have NH4 etc
 # Date column in lawadata already POSIXct data type
 sub_swq <- lawadata%>%select(c("LawaSiteID","SiteName","Date","parameter","Value"))%>%
   filter(tolower(parameter)%in%tolower(c("NH4","TON","ECOLI","PH")))
@@ -74,6 +76,7 @@ i=1
 cat(length(uLAWAids),'\t')
 for(i in i:length(uLAWAids)){
   cat('.')
+  if(as.integer(i/100)==(i/100)){cat('\n')}
   #regex find replace  sub_swq\$((.*))\[sub_swq\$Parameter=="TON" & sub_swq\$SiteName==uLAWAids\[i\]\]
   suppressWarnings(rm(tonsite,nh4site,ecosite,rightSite,value,Value)  )
   rightSite=sub_swq[(sub_swq$LawaSiteID==uLAWAids[i]),]
@@ -183,6 +186,7 @@ for(i in i:length(uLAWAids)){
    }  
   
   ######################  E.Coli #########################################
+  suppressWarnings(rm(cnEc_band,cnEc95_band,cnEcRecHealth540_Band,cnEcRecHealth260_Band,ecosite,rawEcoli))
   ecosite=rightSite[rightSite$Parameter=="ECOLI",]
   rawEcoli=data.frame(year=format(ecosite$Date,'%Y'),
                       value=ecosite$Value)
@@ -200,15 +204,15 @@ for(i in i:length(uLAWAids)){
     Com_NOF$E_coliRecHealth540[nrow(Com_NOF)] <- sum(rawEcoli$value>540)/length(rawEcoli$value)*100
     Com_NOF$E_coliRecHealth260[nrow(Com_NOF)] <- sum(rawEcoli$value>260)/length(rawEcoli$value)*100
     
-    Com_NOF$E_coliRecHealth540band <- unlist(lapply(Com_NOF$E_coliRecHealth540,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec540))
-    cnEcRecHealth540band <- unlist(lapply(Com_NOF$E_coliRecHealth540band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
+    Com_NOF$E_coliRecHealth540_Band <- unlist(lapply(Com_NOF$E_coliRecHealth540,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec540))
+    cnEcRecHealth540_Band <- unlist(lapply(Com_NOF$E_coliRecHealth540_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))
     
-    Com_NOF$E_coliRecHealth260band <- unlist(lapply(Com_NOF$E_coliRecHealth260,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec260))
-    cnEcRecHealth260band <- unlist(lapply(Com_NOF$E_coliRecHealth260band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))  
+    Com_NOF$E_coliRecHealth260_Band <- unlist(lapply(Com_NOF$E_coliRecHealth260,NOF_FindBand,bandColumn=NOFbandDefinitions$EcoliRec260))
+    cnEcRecHealth260_Band <- unlist(lapply(Com_NOF$E_coliRecHealth260_Band,FUN=function(x){min(unlist(strsplit(x,split = '')))}))  
   } #else they're left as NA
   
   #E coli median ####
-  if(dim(ecosite)[1]>60){
+  if(dim(ecosite)[1]>=60){
     Value <- tapply(ecosite$Value, format(ecosite$Date, '%Y'), na.rm=TRUE, quantile,prob=c(0.5),type=5)
     if(length(Value)!=0){
       #adding values into Com_NOF table
@@ -238,7 +242,11 @@ for(i in i:length(uLAWAids)){
   }
   #---------------------------------------------------------------------------------
   #These contain the best case out of these scorings, the worst of which contributes.
-  Com_NOF$E_coliSummaryband = apply(cbind(pmax(cnEc_band,cnEc95_band,cnEcRecHealth540band,cnEcRecHealth260band)),1,max)
+  if(all(exists(c("cnEc_band","cnEc95_band","cnEcRecHealth540_Band","cnEcRecHealth260_Band")))){
+    Com_NOF$E_coliSummaryband = apply(cbind(pmax(cnEc_band,cnEc95_band,cnEcRecHealth540_Band,cnEcRecHealth260_Band)),1,max)
+  }else{
+    Com_NOF$E_coliSummaryband = NA
+  }
   
   Com_NOF$LawaSiteID <- uLAWAids[i]
   if(!exists("NOFSummaryTable")){
@@ -248,7 +256,6 @@ for(i in i:length(uLAWAids)){
   }
   rm(ecosite,nh4site,rightSite,tonsite)
 }
-
 
 if(0){
   with(NOFSummaryTable,plot(as.factor(Med_Nitrate_Band),Median_Nitrate))
@@ -264,32 +271,33 @@ if(0){
 }
 
 #############################Save the output table ############################
-load(file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData") #From LAWA_State_EG, it's with catchment info
+riverSiteTable=read.csv(file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors = F) 
+# load(file="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawa_sitetable.RData") #From LAWA_State_EG, it's with catchment info
 
 
-NOFSummaryTable$CouncilSiteID=catSiteTable$CouncilSiteID[match(NOFSummaryTable$LawaSiteID,catSiteTable$LawaSiteID)]
-NOFSummaryTable$SiteID=catSiteTable$SiteID[match(NOFSummaryTable$LawaSiteID,catSiteTable$LawaSiteID)]
+NOFSummaryTable$CouncilSiteID=riverSiteTable$CouncilSiteID[match(NOFSummaryTable$LawaSiteID,riverSiteTable$LawaSiteID)]
+NOFSummaryTable$SiteID=riverSiteTable$SiteID[match(NOFSummaryTable$LawaSiteID,riverSiteTable$LawaSiteID)]
 NOFSummaryTable <- NOFSummaryTable%>%select(LawaSiteID:SiteID,Year:E_coliSummaryband)
-write.csv(NOFSummaryTable, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable.csv"),row.names=F)
+write.csv(NOFSummaryTable, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/NOFSummaryTable.csv"),row.names=F)
 
-NOFSummaryTable <- merge(NOFSummaryTable, catSiteTable) 
+NOFSummaryTable <- merge(NOFSummaryTable, riverSiteTable) 
 NOFSummaryTableSubset <- NOFSummaryTable[NOFSummaryTable$Year=="Overall",]
 NOFSummaryTableSubset <- NOFSummaryTableSubset%>%select("LawaSiteID","CouncilSiteID","SiteID",
                                                         Year:E_coliSummaryband,
                                                         "SWQAltitude","SWQLanduse","Agency")
-write.csv(NOFSummaryTableSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTable_Overall.csv"),row.names=F)
+write.csv(NOFSummaryTableSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/NOFSummaryTable_Overall.csv"),row.names=F)
 
 # Reshape Output
 require(reshape2)
-NOFSummaryTableLong <- melt(data=NOFSummaryTable%>%select(-Comment),
-                            id.vars=c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","Region",
-                                      "SWQAltitude","SWQLanduse","SWQuality","SWQFrequencyAll","SWQFrequencyLast5","TermReach",
-                                      "accessDate","LAWA_CATCH","CATCH_LBL","CatchID","CatchType","SOE_FW_RIV"))
-write.csv(NOFSummaryTableLong, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOFSummaryTableLong.csv"),row.names=F)
+NOFSummaryTableLong <- melt(data=NOFSummaryTable,#%>%select(-Comment),
+                            id.vars=c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","Region","Long","Lat",
+                                      "SWQAltitude","SWQLanduse","SWQuality","SWQFrequencyAll","SWQFrequencyLast5",
+                                      "accessDate"))#,"TermReach","LAWA_CATCH","CATCH_LBL","CatchID","CatchType","SOE_FW_RIV"))
+write.csv(NOFSummaryTableLong, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/NOFSummaryTableLong.csv"),row.names=F)
 
 NOFSummaryTableLongSubset <- NOFSummaryTableLong[NOFSummaryTableLong$Year=="Overall",]
 NOFSummaryTableLongSubset <- NOFSummaryTableLongSubset[!is.na(NOFSummaryTableLongSubset$LawaSiteID),]
-write.csv(NOFSummaryTableLongSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018.csv"),row.names=F)
+write.csv(NOFSummaryTableLongSubset, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/NOF_STATE_2018.csv"),row.names=F)
 
 
 
@@ -299,11 +307,10 @@ NOFRound$variable <- as.character(NOFRound$variable)
 
 variables<-as.character(unique(NOFSummaryTableLongSubset$variable))
 variables <- variables[order(variables)]
-# 1] "Ammonia_Toxicity_Band"  "E_coli"                 "E_coli_band"            "E_coli95"               "E_coli95_band"         
-# [6] "E_coliRecHealth260"     "E_coliRecHealth260band" "E_coliRecHealth540"     "E_coliRecHealth540band" "E_coliSummaryband"     
-# [11] "Max_Ammoniacal"         "Max_Ammoniacal_Band"    "Med_Ammoniacal_Band"    "Med_Nitrate_Band"       "Median_Ammoniacal"     
-# [16] "Median_Nitrate"         "Nitrate_Toxicity_Band"  "Per_Nitrate"            "Per_Nitrate_Band"       "SWQFrequencyAll"       
-# [21] "SWQFrequencyLast5"     
+# [1] "Ammonia_Toxicity_Band"   "E_coli"                  "E_coli_band"             "E_coli95"                "E_coli95_band"          
+# [6] "E_coliRecHealth260"      "E_coliRecHealth260_Band" "E_coliRecHealth540"      "E_coliRecHealth540_Band" "E_coliSummaryband"      
+# [11] "Max_Ammoniacal"          "Max_Ammoniacal_Band"     "Med_Ammoniacal_Band"     "Med_Nitrate_Band"        "Median_Ammoniacal"      
+# [16] "Median_Nitrate"          "Nitrate_Toxicity_Band"   "Per_Nitrate"             "Per_Nitrate_Band"       
 
 # Decimal places for variables
 dp <- rep(NA,length(variables))
@@ -350,7 +357,7 @@ for(i in 1:length(dfp$variables)){
 
 NOFRound$value[is.na(NOFRound$value)] <- "NA"
 NOFRound <- NOFRound[order(NOFRound$LawaSiteID,NOFRound$parameterInvolved,NOFRound$desc),]
-write.csv(NOFRound, file = "h:/ericg/16666LAWA/2018/WaterQuality/ROutput/NOF_STATE_2018_Rounded_NAs.csv")
+write.csv(NOFRound, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/NOF_STATE_2018_Rounded_NAs.csv"),row.names=F)
 
 # Transform (tidyr::spread) data in NOFRound to the following form to supply to IT Effect
 # LawaSiteID,SiteName,Year,Parameter,value,Band
@@ -367,5 +374,8 @@ names(NOF_band) <- c("LawaSiteID","CouncilSiteID","SiteID","Agency","Year","Band
 NOF_wide <- dplyr::left_join(NOF_band,NOF_value,by = c("LawaSiteID","CouncilSiteID","SiteID","Agency", "Year", "parameterInvolved"))
 NOF_wide <- unique(NOF_wide)
 
-write.csv(NOF_wide, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/ROutput/RiverWQ_NOF_forITE_",
-                                  format(Sys.time(),"%Hh%mm-%d%b%Y"),".csv"),row.names = F)
+write.csv(NOF_wide, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_NOF_forITE_",
+                                  format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
+
+# NOF_wide=read.csv(tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis",
+#                            pattern="RiverWQ_NOF_forITE_",recursive = T,full.names = T),1),stringsAsFactors = F)
