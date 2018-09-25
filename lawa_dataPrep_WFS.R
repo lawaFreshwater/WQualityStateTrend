@@ -213,6 +213,13 @@ for(h in h:length(urls$URL)){
                                                  emarSTR,"MonitoringSiteReferenceData[emar:CouncilSiteID='",
                                                  theseSites[thisSite],"'] ",module,"/emar:",WQvars[i])),
                           xmlValue)
+            if(urls$Agency[h]=="ES"&WQvars[i]=="SWQLanduse"){
+              newb<- sapply(getNodeSet(doc=xmldata, 
+                                       path=paste0("//emar:LawaSiteID/../../",
+                                                   emarSTR,"MonitoringSiteReferenceData[emar:CouncilSiteID='",
+                                                 theseSites[thisSite],"'] ",module,"/emar:SWQLandUse")),
+                            xmlValue)
+            }
             newb=unique(newb)
             if(any(newb=="")){
               newb=newb[-which(newb=="")]
@@ -591,6 +598,74 @@ siteTable=unique(siteTable)
 
 by(INDICES = siteTable$Agency,data = siteTable,FUN = function(x)head(x))
 ## Output for next script
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00001"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00001"]="lowland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00001"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00001"]="quarterly"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00008"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00008"]="upland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00008"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00008"]="quarterly"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00013"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00013"]="lowland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00013"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00013"]="quarterly"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00014"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00014"]="lowland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00014"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00014"]="quarterly"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00016"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00016"]="lowland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00016"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00016"]="quarterly"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="TDC-00017"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="TDC-00017"]="lowland"
+siteTable$SWQFrequencyAll[siteTable$LawaSiteID=="TDC-00017"]="quarterly"
+siteTable$SWQFrequencyLast5[siteTable$LawaSiteID=="TDC-00017"]="quarterly"
+
+siteTable$SWQAltitude[siteTable$LawaSiteID=="GDC-00005"]="lowland"
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="ORC-00031"]="rural"
+siteTable$SWQAltitude[siteTable$LawaSiteID=="ORC-00031"]="upland"
+
+siteTable$SWQLanduse=tolower(siteTable$SWQLanduse)
+siteTable$SWQAltitude=tolower(siteTable$SWQAltitude)
+
+#Land use and altitude infos pulled from lawa backend
+
+siteTable$SWQLanduse[tolower(siteTable$SWQLanduse)%in%c("unstated","")] <- NA
+siteTable$SWQLanduse[tolower(siteTable$SWQLanduse)%in%c("forest","native","exotic","natural")] <- "forest"
+
+siteTable$SWQAltitude[siteTable$LawaSiteID=="LAWA-00669"]='lowland'
+siteTable$SWQLanduse[siteTable$LawaSiteID=="LAWA-00669"]='rural'
+
+siteTable$Region[siteTable$LawaSiteID=="NRWQN-00035"]='taranaki'
+siteTable$SWQLanduse[siteTable$LawaSiteID=="NRWQN-00035"]='rural'
+siteTable$SWQAltitude[siteTable$LawaSiteID=="NRWQN-00035"]='upland'
+
+siteTable$SWQAltitude[siteTable$LawaSiteID=="LAWA-100557"]="upland"
+siteTable$SWQLanduse[siteTable$LawaSiteID=="LAWA-100557"]="forest"
+
+siteTable$Region[siteTable$LawaSiteID=="ES-00010"]='southland'  #Note, may be the same as ES-00012
+siteTable$SWQLanduse[siteTable$LawaSiteID=="ES-00010"]='rural'
+siteTable$SWQAltitude[siteTable$LawaSiteID=="ES-00010"]='lowland' 
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="EBOP-00223"]='forest'
+siteTable$SWQAltitude[siteTable$LawaSiteID=="EBOP-00223"]='upland'
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="ECAN-10028"]='rural'
+siteTable$SWQAltitude[siteTable$LawaSiteID=="ECAN-10028"]='lowland'
+
+siteTable$SWQLanduse[siteTable$LawaSiteID=="NRWQN-00036"]='rural' #Confrmed, email Fiza Hafiz 14/9/18
+siteTable$SWQAltitude[siteTable$LawaSiteID=="NRWQN-00036"]='lowland'
+
+
 write.csv(x = siteTable,file = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",row.names = F)
 write.csv(x = siteTable,file = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_WFS_PULL_River.csv",row.names = F)
 
