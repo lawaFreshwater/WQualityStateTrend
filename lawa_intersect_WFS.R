@@ -142,4 +142,21 @@ write.csv(siteTableMerge,
           paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/reviewWFS-SiteList.csv"),row.names=F)
 
 
-
+#Load latest siteTable1, which is intersected with Catchment
+#NOTE  THIS IS NOT JUST THE SITE  TABLE!
+stbl=tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",pattern="LAWA_Site_Table1.csv",recursive=T,full.names=T),1)
+catSiteTable <- read.csv(stbl,stringsAsFactors = F)
+rm(stbl)
+catSiteTable$SWQLanduse[tolower(catSiteTable$SWQLanduse)%in%c("forest","native","exotic","natural")] <- "forest"
+catSiteTable$SWQLanduse[tolower(catSiteTable$SWQLanduse)%in%c("unstated","")] <- NA
+catSiteTable$SiteID[catSiteTable$SiteID=="karapiro stm at hickey rd bridge - cambridge"] <- "karapiro stm at hickey rd bridge"
+catSiteTable$SiteID=trimws(catSiteTable$SiteID)
+catSiteTable$CouncilSiteID=trimws(catSiteTable$CouncilSiteID)
+catSiteTable$LawaSiteID=trimws(catSiteTable$LawaSiteID)
+catSiteTable$SWQAltitude=tolower(catSiteTable$SWQAltitude)
+catSiteTable$SWQLanduse=tolower(catSiteTable$SWQLanduse)
+catSiteTable$SWQFrequencyAll=tolower(catSiteTable$SWQFrequencyAll)
+catSiteTable$SWQFrequencyLast5=tolower(catSiteTable$SWQFrequencyLast5)
+catSiteTable$Region=tolower(catSiteTable$Region)
+catSiteTable$Agency=tolower(catSiteTable$Agency)
+save(catSiteTable,file="h:/ericg/16666LAWA/2018/WaterQuality/ROutput/lawa_sitetable.RData")
