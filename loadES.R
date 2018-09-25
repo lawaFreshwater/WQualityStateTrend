@@ -4,22 +4,12 @@
 
 ## ----------------------------------------------------------------------------
 ## Write Hilltop XML for Water Quality Data
-Process<-TRUE
-message(paste("ES: Loading data from ES Hilltop Server",Process))
- importDestination <- paste("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/",sep="")
-if(Process){
-  if(exists("importDestination")&!file.exists(paste(importDestination,file="esSWQ.csv",sep=""))){
-    write.csv(c(0),file=paste(importDestination,file="esSWQ.csv",sep=""))
-    
+
     require(XML)     ### XML library to write hilltop XML
     require(dplyr)   ### dply library to manipulate table joins on dataframes
     require(RCurl)
-    ## Load libraries ------------------------------------------------
     require(RODBC)   ### ODBC library for SQL connection
-    require(dplyr)   ### dply library to manipulate table joins on dataframes
-    require(XML)     ### XML library to write hilltop XML
-    
-    od<-getwd()
+
     tab="\t"
     
     fname <- "H:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/2018_csv_config_files/esSWQ_config.csv"
@@ -73,8 +63,9 @@ if(Process){
     
     
 
-    i=1
-    for(i in i:length(sites)){
+    
+    for(i in 1:length(sites)){
+      cat(i,'out of',length(sites),'\n')
       for(j in 1:length(Measurements)){
         
         if(Measurements[j]=="E-Coli <CFU>"){
@@ -86,7 +77,6 @@ if(Process){
                        "&From=2004-01-01",
                        "&To=2018-01-01",sep="")
           url <- gsub(" ", "%20", url)
-          cat(url,"\n")
           xmlfile <- requestData(url) 
           
           urlWQ <- paste("http://odp.es.govt.nz/WQ.hts?service=Hilltop",
@@ -96,8 +86,7 @@ if(Process){
                          "&From=2004-01-01",
                          "&To=2018-01-01",sep="")
           urlWQ <- gsub(" ", "%20", urlWQ)
-          cat(urlWQ,"\n")
-          
+
           xmlfileWQ <- requestData(urlWQ)  
           
           if(is.null(xmlfile)){
@@ -328,13 +317,6 @@ if(Process){
       
     }
     cat("Saving: ",Sys.time()-tm,"\n")
-    if(exists("importDestination")){
-      saveXML(con$value(), paste(importDestination,file="esSWQ.xml",sep=""))
-    } else {
-      saveXML(con$value(), file="esSWQ.xml")
-    }
+      saveXML(con$value(), paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/esSWQ.xml"))
     cat("Finished",Sys.time()-tm,"\n")
     
-  }
-}
-rm(Process)
