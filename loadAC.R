@@ -62,9 +62,9 @@ message(paste("AC: Loading data from Kisters/Hydrotel"))
 
     #function to create xml file from url. 
     ld <- function(url){
-      (download.file(url,destfile="tmpr",method="wininet",quiet=T))
+      (download.file(url,destfile="tmpac",method="wininet",quiet=T))
       pause(1)
-      xmlfile <- xmlParse(file = "tmpr")
+      xmlfile <- xmlParse(file = "tmpac")
       unlink("tmpr")
       return(xmlfile)
     }
