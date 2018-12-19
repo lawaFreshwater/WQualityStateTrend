@@ -52,7 +52,7 @@ StartYear <- EndYear - NOF_PERIOD + 1
 
 # loads lawadata dataframe  from LAWA_State.r  - has altered values from censoring, and calculated medians
 
-load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"))
+load(file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"),verbose=T)
 
 lawadata$parameter=toupper(lawadata$parameter)
 # Subset to just have NH4 etc
@@ -377,5 +377,4 @@ NOF_wide <- unique(NOF_wide)
 write.csv(NOF_wide, file = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_NOF_forITE_",
                                   format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
 
-# NOF_wide=read.csv(tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis",
-#                            pattern="RiverWQ_NOF_forITE_",recursive = T,full.names = T),1),stringsAsFactors = F)
+# NOF_wide=read.csv(tail(dir(path="h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis",pattern="RiverWQ_NOF_forITE_",recursive = T,full.names = T),1),stringsAsFactors = F)

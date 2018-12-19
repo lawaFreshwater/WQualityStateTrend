@@ -12,9 +12,6 @@ lawaset=c("NH4", "TURB", "BDISC",  "DRP",  "ECOLI",  "TN",  "TP",  "TON",  "PH")
 #     
 
 siteTable=read.csv("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors=FALSE)
-while(grepl(pattern = '^X',x = names(siteTable)[1])){
-  siteTable=siteTable[,-1]
-}
 siteTable$SiteID=trimws(siteTable$SiteID)
 rownames(siteTable)=NULL
 
@@ -94,7 +91,7 @@ write.csv(nms,paste0("h:/ericg/16666LAWA/2018/WaterQuality/QA/WQAudit.csv"),row.
 
 #Per site/measurement start, stop, n and range audit
 for(agency in c("ac","boprc","ecan","es","gdc","gwrc","hbrc","hrc","mdc","ncc","nrc","orc","tdc","trc","wcrc","wrc")){
-  mfl=loadLatestCSVRiver(agency)
+  mfl=loadLatestCSVRiver(agency,maxHistory = 60)
   nvar=length(uvars <- unique(mfl$parameter))
   nsite=length(usites <- unique(mfl$SiteName))
   agencyDeets=as.data.frame(matrix(nrow=nvar*nsite,ncol=7))
@@ -190,6 +187,7 @@ wqdata$SWQLanduse=tolower(wqdata$SWQLanduse)
 
 try(dir.create(paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"))))
 write.csv(wqdata,paste0("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/",format(Sys.Date(),"%Y-%m-%d"),"/AllCouncils.csv"),row.names = F)
+# wqdata=read.csv(tail(dir("H:/ericg/16666LAWA/2018/WaterQuality/1.Imported",pattern="AllCouncils.csv",recursive = T,full.names = T,ignore.case = T),1),stringsAsFactors = F)
 rm(ac,boprc,ecan,es,gdc,gwrc,hbrc,hrc,mdc,ncc,nrc,orc,tdc,trc,wcrc,wrc,council,niwa)
 
 
@@ -208,6 +206,63 @@ for(param in 1:length(params)){
   }
   if(names(dev.cur())=='tiff'){dev.off()}
 }
+
+
+
+
+#River WQ site names and locations as a little 'stats' information
+riverSiteTable=read.csv("file:///H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors = F)
+macroSiteTable=read.csv("H:/ericg/16666LAWA/2018/MacroInvertebrates/1.Imported/LAWA_Site_Table_Macro.csv",stringsAsFactors=FALSE)
+extraSites=read.csv('H:/ericg/16666LAWA/2018/MacroInvertebrates/1.Imported/ExtraMacrotable.csv',stringsAsFactors = F)
+extraSites=extraSites[!tolower(extraSites$CouncilSiteID)%in%tolower(macroSiteTable$CouncilSiteID),]
+macroSiteTable <- rbind(macroSiteTable,extraSites)
+rm(extraSites)
+IDs <- riverSiteTable%>%select(LawaSiteID,CouncilSiteID,SiteID)%>%rbind(macroSiteTable%>%select(LawaSiteID,CouncilSiteID,SiteID))%>%unique
+
+#Find whether SiteName, CouncilSiteID or SiteID has a higher number of alphas, per row
+bestName=apply(IDs[,c(2,3)],MARGIN = 1,
+               FUN=function(x)which.max(lapply(x,
+                                               FUN=function(x)length(grep(pattern = "[[:alpha:]]",x = unlist(strsplit(x,'')))))))
+bNameCol=(c(2,3)[bestName])
+bNames=IDs[cbind(1:nrow(IDs),bNameCol)]
+bNames=gsub(pattern = "^[[:digit:]]* \\*or\\* ",replacement="",bNames)
+bNames=gsub(pattern = " \\*or\\* [[:digit:]]*$",replacement="",bNames)
+bNames[bNames=="Stony at Mangatete Bridge *or* STY000300"] <- "Stony at Mangatete Bridge"
+bNames[bNames=="Waiwhakaiho at Egmont Village *or* WKH000500"] <- "Waiwhakaiho at Egmont Village"
+bNames=gsub(pattern = "^[[:alpha:]]* \\*or\\* ",replacement="",bNames)
+bNames[bNames=="West Hoe *or* West Hoe @ Halls"] <- "West Hoe  Halls"
+IDs$Site=bNames
+
+#%>%dplyr::group_by(LawaSiteID)%>%dplyr::summarise(SiteName=paste0((SiteName)),
+#                                                 CouncilSiteID=paste0((CouncilSiteID)),
+#                                                 SiteID=paste0((SiteID)))%>%ungroup%>%as.data.frame
+# plot(latlong$Long,latlong$Lat) #1038
+# length(unique(IDs$LawaSiteID)) #986
+# length(unique(IDs$SiteName)) #1005
+# length(unique(IDs$CouncilSiteID)) #1003
+# length(unique(IDs$SiteID)) #993
+# 
+# byLSD <- IDs%>%arrange(LawaSiteID)
+# byLSD[sort(c(which(duplicated(byLSD$LawaSiteID))-1,which(duplicated(byLSD$LawaSiteID)))),]%>%as.data.frame
+# lsdID <- IDs%>%select(LawaSiteID,SiteID)%>%unique%>%arrange(LawaSiteID)
+# lsdID[sort(c(which(duplicated(lsdID$LawaSiteID))-1,which(duplicated(lsdID$LawaSiteID)))),]%>%as.data.frame
+
+
+IDs$Region=riverSiteTable$Region[match(IDs$LawaSiteID,riverSiteTable$LawaSiteID)]
+IDs$Agency=riverSiteTable$Agency[match(IDs$LawaSiteID,riverSiteTable$LawaSiteID)]
+IDs$Long=riverSiteTable$Long[match(IDs$LawaSiteID,riverSiteTable$LawaSiteID)]
+IDs$Lat=riverSiteTable$Lat[match(IDs$LawaSiteID,riverSiteTable$LawaSiteID)]
+
+IDs$Region[is.na(IDs$Region)]=macroSiteTable$Region[match(IDs$LawaSiteID[is.na(IDs$Region)],macroSiteTable$LawaSiteID)]
+IDs$Agency[is.na(IDs$Agency)]=macroSiteTable$Agency[match(IDs$LawaSiteID[is.na(IDs$Agency)],macroSiteTable$LawaSiteID)]
+IDs$Long[is.na(IDs$Long)]=macroSiteTable$Long[match(IDs$LawaSiteID[is.na(IDs$Long)],macroSiteTable$LawaSiteID)]
+IDs$Lat[is.na(IDs$Lat)]=macroSiteTable$Lat[match(IDs$LawaSiteID[is.na(IDs$Lat)],macroSiteTable$LawaSiteID)]
+
+
+write.csv(IDs%>%select(-CouncilSiteID,-SiteID),
+          file = paste0('h:/ericg/16666LAWA/2018/RiverAndMacroSiteLocns',format(Sys.Date(),'%d-%b-%Y'),'.csv'),row.names = F)
+
+IDs=read.csv(tail(dir('h:/ericg/16666LAWA/2018/','RiverAndMacroSiteLocns',recursive = F,full.names = T),1),stringsAsFactors = F)
 
 
 

@@ -1,5 +1,6 @@
 rm(list=ls())
 library(lubridate)
+library(stringr)
 StartYear <- 2013
 EndYear <- 2017
 source("h:/ericg/16666LAWA/2018/WaterQuality/R/lawa_state/scripts/WQualityStateTrend/lawa_state_functions.R")
@@ -14,7 +15,7 @@ riverSiteTable=read.csv(file="h:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LA
 if(!exists('wqdata')){
   combowqdata=tail(dir(path = "H:/ericg/16666LAWA/2018/WaterQuality/1.Imported",pattern = "AllCouncils.csv",recursive = T,full.names = T),1)
   cat(combowqdata)
-  wqdata=read.csv(combowqdata,stringsAsFactors = F)
+  wqdata=readr::read_csv(combowqdata,guess_max=150000)%>%as.data.frame
   wqdata$SWQLanduse[is.na(wqdata$SWQLanduse)]=riverSiteTable$SWQLanduse[match(wqdata$LawaSiteID[is.na(wqdata$SWQLanduse)],riverSiteTable$LawaSiteID)]
   wqdata$SWQAltitude[is.na(wqdata$SWQAltitude)]=riverSiteTable$SWQAltitude[match(wqdata$LawaSiteID[is.na(wqdata$SWQAltitude)],riverSiteTable$LawaSiteID)]
   rm(combowqdata)
@@ -28,16 +29,47 @@ wqdata$Symbol[wqdata$CenType=="Left"]='<'
 wqdata$Symbol[wqdata$CenType=="Right"]='>'
 wqdata$RawValue=paste0(wqdata$Symbol,wqdata$Value)
 
-# wqdata$Catchment=catSiteTable$LAWA_CATCH[match(wqdata$LawaSiteID,catSiteTable$LawaSiteID)]
 
-write.csv(wqdata%>%select(LawaSiteID,CouncilSiteID,parameter,Date,RawValue,Symbol,Value,Region),
-          file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_GraphData",
-                             format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
+wqdYear=year(dmy(wqdata$Date))
+wqdata <- wqdata[which(wqdYear>=2008 & wqdYear<=2018),]
+rm(wqdYear)
+
+#Find whether SiteName, CouncilSiteID or SiteID has a higher number of alphas, per row
+bestName=apply(wqdata[,c(1,8,10)],MARGIN = 1,
+               FUN=function(x)which.max(lapply(x,
+                                               FUN=function(x)length(grep(pattern = "[[:alpha:]]",x = unlist(strsplit(x,'')))))))
+bNameCol=(c(1,8,10)[bestName])
+bNames=wqdata[cbind(1:nrow(wqdata),bNameCol)]
+bNames=gsub(pattern = "^[[:digit:]]* \\*or\\* ",replacement="",bNames)
+bNames=gsub(pattern = " \\*or\\* [[:digit:]]*$",replacement="",bNames)
+bNames[bNames=="Stony at Mangatete Bridge *or* STY000300"] <- "Stony at Mangatete Bridge"
+bNames[bNames=="Waiwhakaiho at Egmont Village *or* WKH000500"] <- "Waiwhakaiho at Egmont Village"
+wqdata$Site=bNames
+
+
+dir.create(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d")),showWarnings = F)
+
+write.csv(wqdata[-grep('ccc',wqdata$LawaSiteID,ignore.case = T),]%>%
+            filter(Agency!='niwa')%>%
+            select(LawaSiteID,Site,parameter,Date,RawValue,Symbol,Value,Region), #696184 by 8
+          file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",
+                      format(Sys.Date(),"%Y-%m-%d"),
+                      "/RiverWQ_PublicDownloadData",
+                      format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
+
+wqdata <- wqdata%>%select(-Site)
+
+write.csv(wqdata%>%
+            select(LawaSiteID,CouncilSiteID,parameter,Date,RawValue,Symbol,Value,Region),
+          file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",
+                      format(Sys.Date(),"%Y-%m-%d"),
+                      "/RiverWQ_GraphData",
+                      format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
 
 wqdYear=year(dmy(wqdata$Date))
 wqdata <- wqdata[which(wqdYear>=StartYear & wqdYear<=EndYear),]
 rm(wqdYear)
-#928841 to 434698
+#779166 to 444817
 
 
 # #You know?  Should be the SiteName matches with CouncilSiteID.  Are those in these tables?
@@ -45,7 +77,7 @@ rm(wqdYear)
 
 wqparam <- c("BDISC","TURB","NH4","PH","TON","TN","DRP","TP","ECOLI") 
 
-
+wqdata$Catchment='a'
 suppressWarnings(rm(wqdata_A,wqdata_med,wqdata_n,lawadata,lawadata_q))
 for(i in 1:length(wqparam)){
   
@@ -69,34 +101,33 @@ for(i in 1:length(wqparam)){
   wqdata_A$LAWAID=wqdata_A$LawaSiteID
   wqdata_A$LanduseGroup=wqdata_A$SWQLanduse
   wqdata_A$AltitudeGroup=wqdata_A$SWQAltitude
-  # wqdata_A$Catchment=wqdata_A$LAWA_CATCH
   wqdata_A$Frequency=wqdata_A$SWQFrequencyLast5
-wqdata_A <- as.data.frame(wqdata_A)  
+  wqdata_A <- as.data.frame(wqdata_A)  
   #Medians per sampling occasion are then reduced within StateAnalysis to a median per site to reflect state
   wqdata_med <- summaryBy(formula=Value~SiteName+parameter+Date,
                           id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+SWQLanduse+
-                            SWQAltitude+SWQFrequencyLast5+Catchment,#+TermReach+LAWA_CATCH+CATCH_LBL+Comment+SWQuality,
+                            SWQAltitude+SWQFrequencyLast5+Catchment,
                           data=wqdata_A,
                           FUN=quantile, prob=c(0.5), type=5, na.rm=TRUE, keep.name=TRUE)
   wqdata_med$LAWAID=wqdata_med$LawaSiteID
   wqdata_med$LanduseGroup=wqdata_med$SWQLanduse
   wqdata_med$AltitudeGroup=wqdata_med$SWQAltitude
-  wqdata_med$Catchment=wqdata_med$LAWA_CATCH
+  # wqdata_med$Catchment=wqdata_med$LAWA_CATCH
   wqdata_med$Frequency=wqdata_med$SWQFrequencyLast5
 
   wqdata_n <- summaryBy(formula=Value~SiteName+parameter+Date,
                         id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+SWQLanduse+
-                          SWQAltitude+SWQFrequencyLast5+Catchment,#+TermReach+LAWA_CATCH+CATCH_LBL+Comment+SWQuality,
+                          SWQAltitude+SWQFrequencyLast5+Catchment,
                         data=wqdata_A, 
                         FUN=length,keep.names=T)
   wqdata_c <- summaryBy(formula=Censored~SiteName+parameter+Date,
                         id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+SWQLanduse+
-                          SWQAltitude+SWQFrequencyLast5+Catchment,#+TermReach+LAWA_CATCH+CATCH_LBL+Comment+SWQuality,
+                          SWQAltitude+SWQFrequencyLast5+Catchment,
                         data=wqdata_A, 
                         FUN=any,keep.names=T)
   wqdata_ct <- summaryBy(formula=CenType~SiteName+parameter+Date,
                          id=~LawaSiteID+SiteID+CouncilSiteID+Agency+Region+SWQLanduse+
-                           SWQAltitude+SWQFrequencyLast5+Catchment,#+TermReach+LAWA_CATCH+CATCH_LBL+Comment+SWQuality,
+                           SWQAltitude+SWQFrequencyLast5+Catchment,
                          data=wqdata_A, 
                          FUN=function(x)paste(unique(x)),keep.names=T)
   wqdata_med$n=wqdata_n$Value
@@ -178,7 +209,7 @@ rm(state)
 # Housekeeping
 # - Saving the lawadata table  USED in NOF calculations
 save(lawadata,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"))
-#load(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata",StartYear,"-",EndYear,".RData"),verbose=T)
+load(tail(dir("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis","lawadata.*RData",recursive = T,full.names = T),1),verbose=T)
 # save(lawadata_q,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/lawadata_q_",StartYear,"-",EndYear,".RData"))
 
 # State Analysis output contains quantiles for each parameter by site.
@@ -254,7 +285,7 @@ write.csv(ss,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",form
 # ss=read.csv(paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/state",StartYear,"-",EndYear,".csv"),stringsAsFactors = F)
 cat("LAWA Water QUality State Analysis\nCompleted assigning State Scores\n")
 
-ss_csv <- read.csv(file=paste("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/state",StartYear,"-",EndYear,".csv",sep=""),header=TRUE,sep=",",quote = "\"")
+ss_csv <- read.csv(tail(dir("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis","state2013-2017.csv",recursive = T,full.names = T),1),stringsAsFactors = F)
 
 # ss.1 <- subset(ss_csv,Scope=="Region")
 # ss.1$Location <- ss.1$Region
@@ -270,7 +301,7 @@ if(exists("ss.1")){
   ss.4 <- ss.3
 }
 ss.5 <- ss.4%>%select(Location,Parameter,AltitudeGroup,LanduseGroup,Q50,LAWAState,Region,Scope,StateGroup)
-ss.5 <- ss.5%>%rename(Median=Q50)
+ss.5 <- ss.5%>%dplyr::rename(Median=Q50)
 # ss.5 <- ss.4[c(18,8,2,3,11,17,4,15,16)-1]  # Location, Parameter, Altitude, Landuse, Q50, LAWAState, Region, Scope, StateGroup
  
 #The altitude and landgroup columns should reflect the grouping being used for comparison, and not the characteristics of the site. 
@@ -305,8 +336,8 @@ ss.5$StateGroup <- as.character(ss.5$StateGroup)%>%lapply(FUN=function(x){strspl
 
 write.csv(ss.5,file=paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_STATE_",
                            StartYear,"-",EndYear,"forITE",format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
-ss.5 <- read.csv(tail(dir(path = paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/"),
-                          pattern = 'RiverWQ_STATE_',full.names = T))[1],stringsAsFactors = F)
+ss.5 <- read.csv(tail(dir(path = "h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis",
+                          pattern = 'RiverWQ_STATE_',full.names = T,recursive=T),1),stringsAsFactors = F)
 
 # lawadata_without_niwa <- subset(lawadata,Agency!="NIWA")
 # lawadata_q_without_niwa <- subset(lawadata_q,Agency!="NIWA")

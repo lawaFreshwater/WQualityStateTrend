@@ -21,8 +21,6 @@ if(!exists('wqdata')){
   wqdata <- GetMoreDateInfo(wqdata)
   wqdata$monYear = format(wqdata$myDate,"%b-%Y")
   
-  wqdata$Season <- wqdata$Month
-  SeasonString <- sort(unique(wqdata$Season))
   
   wqdata$CenType[wqdata$CenType%in%c("Left","L")]='lt'
   wqdata$CenType[wqdata$CenType%in%c("Right","R")]='gt'
@@ -30,7 +28,7 @@ if(!exists('wqdata')){
   
   wqdata$NewValues=wqdata$Value
 }
-#Show that censored values are excluded from Trend Analysis
+#Show that censored values are excluded from Trend Analysis  as of v1811, censored values are no longer excluded
 if(0){
   par(mfrow=c(1,1))
   SenSlope(x=data.frame(RawValue=c(seq(1,1.1,length.out = 300)+rnorm(n = 300,mean = 0,sd=0.2),rep(0.5,300)),
@@ -52,6 +50,8 @@ startYear10 <- EndYear - 10+1
 
 #10 year trend ####
 wqdatafor10=wqdata%>%filter(Year>=startYear10 & Year <= EndYear & parameter!="PH")
+wqdatafor10$Season <- wqdatafor10$Month
+SeasonString <- sort(unique(wqdatafor10$Season))
 
 usites=unique(wqdatafor10$LawaSiteID)
 uMeasures=unique(wqdatafor10$parameter)
@@ -103,11 +103,11 @@ for(usite in usite:length(usites)){
         SeasonString <- sort(unique(SSD_med$Season))
         (st <- SeasonalityTest(x = SSD_med,main=uMeasures[uparam],ValuesToUse = "Value",do.plot =F))
         if(!is.na(st$pvalue)&&st$pvalue<0.05){
-          (sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",doPlot = F))
+          (sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot = F))
           (sss <- SeasonalSenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
-          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
+          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot=F))
           (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
@@ -149,7 +149,7 @@ rm(ss,st,mk)
 
 #5 year trend ####
 wqdatafor5=wqdata%>%filter(Year>=startYear5 & Year <= EndYear & parameter!="PH")
-
+wqdatafor5$Season=wqdatafor5$Month
 usites=unique(wqdatafor5$LawaSiteID)
 uMeasures=unique(wqdatafor5$parameter)
 trendTable5=structure(list(LawaSiteID=NA,parameter=NA,
@@ -196,11 +196,11 @@ for(usite in 1:length(usites)){
         SeasonString <- sort(unique(SSD_med$Season))
         (st <- SeasonalityTest(x = SSD_med,main=uMeasures[uparam],ValuesToUse = "Value",ValuesToUseforMedian="Value",do.plot =F))
         if(!is.na(st$pvalue)&&st$pvalue<0.05){
-          (sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",doPlot = F))
+          (sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot = F))
           (sss <- SeasonalSenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
-          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
+          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot=F))
           (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
@@ -225,8 +225,9 @@ rm(ss,st,mk)
 
 
 #Quarterly, to fill gaps where needed ####
-wqdataforQ10=wqdata%>%filter(Year>startYear10 & Year <= EndYear & parameter!="PH")
+wqdataforQ10=wqdata%>%filter(Year>=startYear10 & Year <= EndYear & parameter!="PH")
 wqdataforQ10$quYear=paste0(wqdataforQ10$Qtr,wqdataforQ10$Year)
+wqdataforQ10$Season=wqdataforQ10$Qtr
 usites=unique(wqdataforQ10$LawaSiteID)
 uMeasures=unique(wqdataforQ10$parameter)
 trendTableQ10=structure(list(LawaSiteID=NA,parameter=NA,
@@ -275,11 +276,11 @@ for(usite in 1:length(usites)){
         SeasonString <- sort(unique(SSD_med$Season))
         (st <- SeasonalityTest(x = SSD_med,main=uMeasures[uparam],ValuesToUse = "Value",ValuesToUseforMedian="Value",do.plot =F))
         if(!is.na(st$pvalue)&&st$pvalue<0.05){
-          sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",doPlot = F)
+          sk <- SeasonalKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot = F)
            sss <- SeasonalSenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F)
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,sk,sss)
         }else{
-          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",doPlot=F))
+          (mk <- MannKendall(x = SSD_med,ValuesToUse = "Value",HiCensor = T,doPlot=F))
           (ss <- SenSlope(HiCensor=T,x = SSD_med,ValuesToUse = "Value",ValuesToUseforMedian="Value",doPlot = F))
           newRow=cbind(LawaSiteID=usites[usite],parameter=uMeasures[uparam],st,mk,ss)
         }
@@ -305,7 +306,7 @@ rm(ss,st,mk)
 
 #Reload if necess and continue ####
 # rm(list=ls())
-source("h:/ericg/16666LAWA/LWPTrends/LWPTrends_v1808.R")
+#source("h:/ericg/16666LAWA/LWPTrends_v1811_beta.R")
 if(!exists('riverSiteTable')){
   riverSiteTable=read.csv("file:///H:/ericg/16666LAWA/2018/WaterQuality/1.Imported/LAWA_Site_Table_River.csv",stringsAsFactors = F)
 }
@@ -320,9 +321,9 @@ if(!exists('wqdata')){
   wqdata$SWQLanduse[tolower(wqdata$SWQLanduse)%in%c("forest","native","exotic","natural")] <- "forest"
   wqdata$myDate <- as.Date(as.character(wqdata$Date),"%d-%b-%Y")
   wqdata <- GetMoreDateInfo(wqdata)
-  
-  wqdata$Season <- wqdata$Month
-  SeasonString <- sort(unique(wqdata$Season))
+  wqdata$monYear = format(wqdata$myDate,"%b-%Y")
+  # wqdata$Season <- wqdata$Month
+  # SeasonString <- sort(unique(wqdata$Season))
   
   wqdata$CenType[wqdata$CenType%in%c("Left","L")]='lt'
   wqdata$CenType[wqdata$CenType%in%c("Right","R")]='gt'
@@ -350,33 +351,37 @@ load(tail(dir(ignore.case=T,
               pattern = "PassCriteriaQ10.rData",full.names = T,recursive = T),1),verbose = T)
 
 tt10agency=riverSiteTable$Agency[match(trendTable10$LawaSiteID,riverSiteTable$LawaSiteID)]
-tt10qagency=riverSiteTable$Agency[match(trendTableQ10$LawaSiteID,riverSiteTable$LawaSiteID)]
+ttQ10agency=riverSiteTable$Agency[match(trendTableQ10$LawaSiteID,riverSiteTable$LawaSiteID)]
 tt5agency=riverSiteTable$Agency[match(trendTable5$LawaSiteID,riverSiteTable$LawaSiteID)]
 
-table(tt10agency)/table(riverSiteTable$Agency)[match(names(table(tt10agency)),names(table(riverSiteTable$Agency)))]
-table(tt10qagency)/table(riverSiteTable$Agency)[match(names(table(tt10qagency)),names(table(riverSiteTable$Agency)))]
-table(tt5agency)/table(riverSiteTable$Agency)[match(names(table(tt5agency)),names(table(riverSiteTable$Agency)))]
+# table(tt10agency)/table(riverSiteTable$Agency)[match(names(table(tt10agency)),names(table(riverSiteTable$Agency)))]
+# table(ttQ10agency)/table(riverSiteTable$Agency)[match(names(table(ttQ10agency)),names(table(riverSiteTable$Agency)))]
+# table(tt5agency)/table(riverSiteTable$Agency)[match(names(table(tt5agency)),names(table(riverSiteTable$Agency)))]
 
 
 #Remove MDC DRP and ECOLI
 #See email Steffi Henkel 14/9/2018 to Kati Doehring, Eric Goodwin, Abi Loughnan and Peter Hamill
 if(any(tt10agency=="mdc" & trendTable10$parameter=="DRP")){
   trendTable10 <- trendTable10[-which(tt10agency=='mdc'& trendTable10$parameter=="DRP"),]
-  # 3257 to 3231
+  # 3416 to 3390
   tt10agency=riverSiteTable$Agency[match(trendTable10$LawaSiteID,riverSiteTable$LawaSiteID)]
 }
 if(any(tt10agency=="mdc" & trendTable10$parameter=="ECOLI")){
   trendTable10 <- trendTable10[-which(tt10agency=='mdc'& trendTable10$parameter=="ECOLI"),]
-  #3231 to 3205
+  #3390 to 3364
   tt10agency=riverSiteTable$Agency[match(trendTable10$LawaSiteID,riverSiteTable$LawaSiteID)]
 }
+if(any(ttQ10agency=="mdc" & trendTableQ10$parameter=="DRP")){
+  trendTableQ10 <- trendTableQ10[-which(ttQ10agency=='mdc'& trendTableQ10$parameter=="DRP"),]
+  # 5399 to 5373
+  ttQ10agency=riverSiteTable$Agency[match(trendTableQ10$LawaSiteID,riverSiteTable$LawaSiteID)]
+}
+if(any(ttQ10agency=="mdc" & trendTableQ10$parameter=="ECOLI")){
+  trendTableQ10 <- trendTableQ10[-which(ttQ10agency=='mdc'& trendTableQ10$parameter=="ECOLI"),]
+  #5373 to 7346
+  ttQ10agency=riverSiteTable$Agency[match(trendTableQ10$LawaSiteID,riverSiteTable$LawaSiteID)]
+}
 
-
-
-
-EndYear <- 2017
-startYear5 <- EndYear - 5+1
-startYear10 <- EndYear - 10+1
 
 #10yr monthly is gold standard trend. 5yr monthly is silver. 10yr quarterly is bronze standard
 trendTable10$standard='gold'
@@ -384,29 +389,24 @@ trendTable5$standard='silver'
 trendTableQ10$standard='bronze'
 
 combTrend=trendTable10
-# 3205
+# 3364
 combTrend=rbind(combTrend,trendTable5) #[which(!paste0(trendTable5$LawaSiteID,trendTable5$parameter)%in%paste0(combTrend$LawaSiteID,combTrend$parameter)),]
-# 3205 + 5125 = 8330
+# 3364 + 5288 = 8652
 combTrend=rbind(combTrend,trendTableQ10[which(!paste0(trendTableQ10$LawaSiteID,trendTableQ10$parameter)%in%paste0(combTrend$LawaSiteID,combTrend$parameter)),])
-# + 311 = 8641
+# + 796 = 9448
 table(combTrend$standard)
 # bronze gold silver 
-# 311   3205  5125 
+# 796   3364  5288 
 
 
 
-
-
-
-
-
-trendTable5$ConfCat <- cut(trendTable5$Probability, breaks=  c(0, 0.1,0.33,0.66,0.90, 1),
+trendTable5$ConfCat <- cut(trendTable5$Probability, breaks=  c(-0.1, 0.1,0.33,0.67,0.90, 1.1),
                            labels = c("Very likely improving","Likely improving","Indeterminate","Likely degrading","Very likely degrading"))
-trendTable10$ConfCat <- cut(trendTable10$Probability, breaks=  c(0, 0.1,0.33,0.66,0.90, 1),
+trendTable10$ConfCat <- cut(trendTable10$Probability, breaks=  c(-0.1, 0.1,0.33,0.67,0.90, 1.1),
                             labels = c("Very likely improving","Likely improving","Indeterminate","Likely degrading","Very likely degrading"))
-trendTableQ10$ConfCat <- cut(trendTableQ10$Probability, breaks=  c(0, 0.1,0.33,0.66,0.90, 1),
+trendTableQ10$ConfCat <- cut(trendTableQ10$Probability, breaks=  c(-0.1, 0.1,0.33,0.67,0.90, 1.1),
                             labels = c("Very likely improving","Likely improving","Indeterminate","Likely degrading","Very likely degrading"))
-combTrend$ConfCat <- cut(combTrend$Probability, breaks=  c(0, 0.1,0.33,0.66,0.90, 1),
+combTrend$ConfCat <- cut(combTrend$Probability, breaks=  c(-0.1, 0.1,0.33,0.67,0.90, 1.1),
                              labels = c("Very likely improving","Likely improving","Indeterminate","Likely degrading","Very likely degrading"))
 
 trendTable5$ConfCat=factor(trendTable5$ConfCat,levels=rev(c("Very likely improving","Likely improving","Indeterminate","Likely degrading","Very likely degrading")))
@@ -421,7 +421,7 @@ trendTableQ10$period=10
 # trendTable5=trendTable5[,-which(names(trendTable5)=="VarS")[2]]
 # trendTable10=trendTable10[,-which(names(trendTable10)=="VarS")[2]]
 # trendTableQ10=trendTableQ10[,-which(names(trendTableQ10)=="VarS")[2]]
-combTrend=combTrend[,-which(names(combTrend)=="VarS")[2]]
+# combTrend=combTrend[,-which(names(combTrend)=="VarS")[2]]
 combTrend$period=10
 combTrend$period[combTrend$standard=='silver']=5
 combTrend$Frequency='monthly'
@@ -435,13 +435,43 @@ combTrend$Region =    riverSiteTable$Region[match(combTrend$LawaSiteID,riverSite
 # combTrend$Frequency = riverSiteTable$SWQFrequencyAll[match(combTrend$LawaSiteID,riverSiteTable$LawaSiteID)]
 combTrend$TrendScore=as.numeric(combTrend$ConfCat)-3
 combTrend$TrendScore[is.na(combTrend$TrendScore)]<-(-99)
-combTrendExport <- combTrend%>%select(LawaSiteID,parameter,Altitude,Landuse,TrendScore,Region,Frequency,period)
 
-write.csv(combTrendExport,paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_Trend_ForITE",
+MCItrend=read.csv(tail(dir(path="h:/ericg/16666LAWA/2018/MacroInvertebrates/4.Analysis",
+                           pattern='MacroMCI_Trend',full.names = T,recursive = T,ignore.case = T),1),stringsAsFactors = F)
+IDs=read.csv(tail(dir('h:/ericg/16666LAWA/2018/','RiverAndMacroSiteLocns',recursive = F,full.names = T),1),stringsAsFactors = F)
+MCItrend$Site=IDs$Site[match(MCItrend$LawaSiteID,IDs$LawaSiteID)]
+MCItrend$Landuse=NA
+MCItrend$Altitude=NA
+MCItrend$Frequency=NA
+##
+#Find whether SiteName, CouncilSiteID or SiteID has a higher number of alphas, per row
+IDcodes=unique(wqdata[,c(1,8,9,10)])
+bestName=apply(IDcodes[,c(1,2,4)],MARGIN = 1,
+               FUN=function(x)which.max(lapply(x,
+                                               FUN=function(x)length(grep(pattern = "[[:alpha:]]",x = unlist(strsplit(x,'')))))))
+bNameCol=(c(1,2,4)[bestName])
+bNames=IDcodes[cbind(1:nrow(IDcodes),bNameCol)]
+bNames=gsub(pattern = "^[[:digit:]]* \\*or\\* ",replacement="",bNames)
+bNames=gsub(pattern = " \\*or\\* [[:digit:]]*$",replacement="",bNames)
+bNames[bNames=="Stony at Mangatete Bridge *or* STY000300"] <- "Stony at Mangatete Bridge"
+bNames[bNames=="Waiwhakaiho at Egmont Village *or* WKH000500"] <- "Waiwhakaiho at Egmont Village"
+combTrend$Site=bNames[match(combTrend$LawaSiteID,IDcodes$LawaSiteID)]
+##
+
+combTrendExport <- combTrend%>%select(LawaSiteID,Site,parameter,Altitude,Landuse,TrendScore,Region,Frequency,period)
+combTrendExport <- rbind(combTrendExport,MCItrend%>%select(LawaSiteID,Site,parameter,Altitude,Landuse,TrendScore,Region,Frequency,period))
+
+write.csv(combTrendExport%>%select(-Site)%>%filter(parameter!="MCI"),
+          paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",format(Sys.Date(),"%Y-%m-%d"),"/RiverWQ_Trend_ForITE",
                          format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
-rm(combTrendExport)
+write.csv(combTrendExport,paste0("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/",
+                                 format(Sys.Date(),"%Y-%m-%d"),"/RiverWQAndMCI_Trend_ForPublicDownload",
+                                                 format(Sys.time(),"%Hh%Mm-%d%b%Y"),".csv"),row.names = F)
+# combTrendExport=read.csv(tail(dir("h:/ericg/16666LAWA/2018/WaterQuality/4.Analysis/","RiverWQ_Trend_ForITE",recursive = T,full.names = T),1),stringsAsFactors = F)
 
-savePlott=F
+rm(combTrendExport)
+wqdata$Season=wqdata$Month
+savePlott=T
 usites=unique(combTrend$LawaSiteID)
 uMeasures=unique(combTrend$parameter)%>%as.character
 for(uparam in seq_along(uMeasures)){
@@ -478,27 +508,27 @@ for(uparam in seq_along(uMeasures)){
       SeasonalKendall(x = Deg_med,ValuesToUse = uMeasures[uparam],doPlot = F)
       SeasonalSenSlope(HiCensor=T,x = Deg_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }else{
-      MannKendall(x = Deg_med,ValuesToUse = uMeasures[uparam],doPlot=F)
+      MannKendall(HiCensor=T,x = Deg_med,ValuesToUse = uMeasures[uparam],doPlot=F)
       SenSlope(HiCensor=T,x = Deg_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }
     
     st <- SeasonalityTest(x = Ind_med,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
     if(!is.na(st$pvalue)&&st$pvalue<0.05){
-      SeasonalKendall(x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot = F)
+      SeasonalKendall(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot = F)
       SeasonalSenSlope(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }else{
-      MannKendall(x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot=F)
+      MannKendall(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],doPlot=F)
       SenSlope(HiCensor=T,x = Ind_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[worstDeg])
     }
     
     st <- SeasonalityTest(x = Imp_med,main=uMeasures[uparam],ValuesToUse = uMeasures[uparam],do.plot =F)
     if(!is.na(st$pvalue)&&st$pvalue<0.05){
-      SeasonalKendall(x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot = F)
+      SeasonalKendall(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot = F)
       if(is.na(SeasonalSenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])$Probability)){
         SenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
       }
     }else{
-      MannKendall(x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot=F)
+      MannKendall(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],doPlot=F)
       SenSlope(HiCensor=T,x = Imp_med,ValuesToUse = uMeasures[uparam],ValuesToUseforMedian = uMeasures[uparam],doPlot = T,mymain = subTrend$LawaSiteID[bestImp])
     }
     if(names(dev.cur())=='tiff'){dev.off()}
@@ -523,10 +553,11 @@ TrendsForPlotting = rbind(combTrend%>%dplyr::filter(standard%in%c('gold','bronze
 rm(MCItrend)
 
 table(TrendsForPlotting$parameter[which(TrendsForPlotting$TrendScore==-99)]) ->naTab
-
+# DRP   NH4    TP   TON  TURB ECOLI    TN BDISC   MCI 
+# 51   102    10    30     5    20    16     5     0 
 #Drop the -99 NAs
 TrendsForPlotting = TrendsForPlotting%>%dplyr::filter(TrendScore!=-99)
-#4189 to 3932
+#4670 to 4431
 #Starts as DRP   NH4   TP    TON   TURB  ECOLI TN    BDISC  MCI
 #labelled  DRP   NH4   TP    TON   TURB  ECOLI TN    CLAR   MCI
 #Reorder 2 CLAR TURB   TN    TON   NH4   TP    DRP   ECOLI  MCI
